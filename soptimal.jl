@@ -1,5 +1,5 @@
 using SymbolicRegression
-using Symbolics, SymbolicUtils
+using Symbolics
 using Distributions
 using Optimization, OptimizationBBO
 using Plots
@@ -22,30 +22,26 @@ options = SymbolicRegression.Options(
     unary_operators=(exp, sin, cos),
     binary_operators=(+, *, /, -),
     seed=123,
-    deterministic=true
+    deterministic=true,
+    save_to_file=false
 )
-hall_of_fame = EquationSearch(X', Y, options=options, niterations=100, runtests=false, parallelism=:serial)
+hall_of_fame = equation_search(X', Y; options, niterations=100, runtests=false, parallelism=:serial)
 n_best_max = 10
 #incase < 10 model structures were returned
 n_best = min(length(hall_of_fame.members), n_best_max)
 best_models = sort(hall_of_fame.members, by=member -> member.loss)[1:n_best]
 
 @syms x
-eqn = node_to_symbolic(best_models[1].tree, options, varMap=["x"])
+eqn = node_to_symbolic(best_models[1].tree, options, variable_names=["x"])
 
-using SymbolicUtils.Code
-func = Func([x], [], eqn)
-expr = toexpr(func)
-_f = build_function(eqn, x)
-
-f = eval(_f)
+f = build_function(eqn, x, expression=Val{false})
 f.(X)
 
 plot(0.0:0.1:10.0, y.(0.0:0.1:10.0), lw=5, label="true model", ls=:dash);
-model_structures = Function[]
+model_structures = []
 for i = 1:n_best
     eqn = node_to_symbolic(best_models[i].tree, options, varMap=["x"])
-    fi = eval(build_function(eqn, x))
+    fi = build_function(eqn, x, expression=Val{false})
     x_plot = Float64[]
     y_plot = Float64[]
     for x_try in 0.0:0.1:10.0
@@ -61,7 +57,7 @@ for i = 1:n_best
 end
 scatter!(X, Y, ms=5, label="data", ls=:dash);
 plot!(xlabel="x", ylabel="y", ylims=(-1.2, 1.6));
-plot!(tickfontsize=12, guidefontsize=14, legendfontsize=8, grid=false, dpi=600)
+plot!(tickfontsize=12, guidefontsize=14, legendfontsize=8, grid=false, dpi=600, legend=:topright)
 
 function S_criterion(x, model_structures)
     n_structures = length(model_structures)
@@ -116,15 +112,15 @@ plot!(tickfontsize=12, guidefontsize=14, legendfontsize=8, grid=false, dpi=600)
 
 X = [X; X_new]
 Y = [Y; Y_new]
-hall_of_fame = EquationSearch(X', Y, options=options, niterations=100, runtests=false, parallelism=:serial)
+hall_of_fame = equation_search(X', Y, options=options, niterations=100, runtests=false, parallelism=:serial)
 n_best = min(length(hall_of_fame.members), n_best_max)
 best_models = sort(hall_of_fame.members, by=member -> member.loss)[1:n_best]
 plot(0.0:0.01:10.0, y.(0.0:0.01:10.0), lw=5, label="true model", ls=:dash);
-model_structures = Function[]
+model_structures = []
 for i = 1:n_best
-    eqn = node_to_symbolic(best_models[i].tree, options, varMap=["x"])
+    eqn = node_to_symbolic(best_models[i].tree, options, variable_names=["x"])
     println(eqn)
-    fi = eval(build_function(eqn, x))
+    fi = build_function(eqn, x, expression=Val{false})
     x_plot = Float64[]
     y_plot = Float64[]
     for x_try in 0.0:0.01:10.0
