@@ -246,3 +246,42 @@ end
 plot!(tickfontsize=12, guidefontsize=14, legendfontsize=14, grid=false, dpi=600)
 
 ## simulate with different controls
+
+## get complete plausible model structures
+plot(sol ; label=["Cₛ(g/L)" "Cₓ(g/L)" "V(L)"], xlabel="t(h)", lw=3)
+for i in 1:length(model_structures)
+    @mtkmodel plausible_bioreactor begin
+        @parameters begin
+            C_s_in = 50.0
+            y_x_s = 0.777
+            m = 0.0
+            μ_max = 0.421
+            K_s = 0.439
+            linear_control_slope = -0.1
+            linear_control_intercept = 2.0
+        end
+        @variables begin
+            C_s(t) = 3.0
+            C_x(t) = 0.25
+            V(t) = 7.0
+            Q_in(t)
+            μ(t)
+            σ(t)
+        end
+        @equations begin
+            Q_in ~ linear_control_intercept + linear_control_slope * t # this needs to be swapped to piecewise constant function
+            μ ~ model_structures[i](C_s)
+            σ ~ μ / y_x_s + m
+            D(C_s) ~ -σ * C_x + Q_in / V * (C_s_in - C_s)
+            D(C_x) ~ μ * C_x - Q_in / V * C_x
+            D(V) ~ Q_in
+        end
+    end
+    @mtkbuild plausible_bioreactor_f = plausible_bioreactor()
+    prob_plausible = ODEProblem(plausible_bioreactor_f, [], (0.0, 15.0), [])
+    prob_plausible.p[1][2] = 2*prob_plausible.p[1][2]
+    prob_plausible.p[1][3] = 2*prob_plausible.p[1][3] # HARDCODED control par indices (not sure if the index is garanteed to always be 2 and 3)
+    sol_plausible  = solve(prob_plausible , Tsit5())
+    plot!(sol_plausible ; label=["Cₛ(g/L)" "Cₓ(g/L)" "V(L)"], xlabel="t(h)", lw=3)
+end
+plot!(tickfontsize=12, guidefontsize=14, legendfontsize=14, grid=false, dpi=600)
