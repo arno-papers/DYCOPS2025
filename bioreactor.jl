@@ -168,4 +168,44 @@ plot( 0.0:0.1:40.0, μ_predicted )
 μ_max = 0.421
 K_s = 0.439
 plot!(C_s_range, μ_max .* C_s_range ./ (K_s .+ C_s_range))
-## get plausible model structures
+## get plausible model structures for missing physics
+using SymbolicRegression
+options = SymbolicRegression.Options(
+    unary_operators=(exp, sin, cos),
+    binary_operators=(+, *, /, -),
+    seed=123,
+    deterministic=true,
+    save_to_file=false
+)
+hall_of_fame = equation_search(collect(C_s_range)', μ_predicted; options, niterations=100, runtests=false, parallelism=:serial)
+
+n_best_max = 10
+n_best = min(length(hall_of_fame.members), n_best_max) #incase < 10 model structures were returned
+best_models = sort(hall_of_fame.members, by=member -> member.loss)[1:n_best]
+
+@syms x
+eqn = node_to_symbolic(best_models[1].tree, options, variable_names=["x"])
+
+f = build_function(eqn, x, expression=Val{false})
+f.(collect(C_s_range)')
+
+model_structures = []
+for i = 1:n_best
+    eqn = node_to_symbolic(best_models[i].tree, options, varMap=["x"])
+    fi = build_function(eqn, x, expression=Val{false})
+    x_plot = Float64[]
+    y_plot = Float64[]
+    for x_try in 0.0:0.1:10.0
+        try
+            y_try = fi(x_try)
+            append!(x_plot, x_try)
+            append!(y_plot, y_try)
+        catch
+        end
+    end
+    plot!(x_plot, y_plot, label="model $i")
+    push!(model_structures, fi)
+end
+plot!()
+
+## get complete plausible model structures
