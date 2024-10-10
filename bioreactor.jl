@@ -152,3 +152,20 @@ res_prob = remake(ude_prob, p=new_p)
 res_sol = solve(res_prob, Rodas5P())
 plot(res_sol)
 scatter!(sol, idxs=[true_bioreactor_f.V, true_bioreactor_f.C_s], ms=0.4, msw=0)
+
+# continued by Arno
+## reconstruct chain (very inelegant)
+using Lux
+using ComponentArrays
+rng = ModelingToolkitNeuralNets.Xoshiro(0)
+extracted_chain = multi_layer_feed_forward(1, 1)
+p, st = Lux.setup(rng, extracted_chain)
+p = ComponentArray{Float64}(p)
+C_s, _ = extracted_chain([20.0],convert(typeof(p),res.u),st)
+C_s_range = 0.0:0.1:40.0 # do something more elegant than 0 .. 40 later, e.g. 100 steps between max and min of res_sol
+μ_predicted = [extracted_chain([C_s],convert(typeof(p),res.u),st)[1][1] for C_s in C_s_range]
+plot( 0.0:0.1:40.0, μ_predicted )
+μ_max = 0.421
+K_s = 0.439
+plot!(C_s_range, μ_max .* C_s_range ./ (K_s .+ C_s_range))
+## get plausible model structures
