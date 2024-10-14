@@ -278,8 +278,13 @@ for i in 1:length(model_structures)
     end
     @mtkbuild plausible_bioreactor_f = plausible_bioreactor()
     prob_plausible = ODEProblem(plausible_bioreactor_f, [], (0.0, 15.0), [])
-    prob_plausible.p[1][2] = 2*prob_plausible.p[1][2]
-    prob_plausible.p[1][3] = 2*prob_plausible.p[1][3] # HARDCODED control par indices (not sure if the index is garanteed to always be 2 and 3)
+
+    control_slope = plausible_bioreactor_f.linear_control_slope
+    control_intercept = plausible_bioreactor_f.linear_control_intercept
+
+    prob_plausible.ps[control_slope] = 2 * prob_plausible.ps[control_slope]
+    prob_plausible.ps[control_intercept] = 2 * prob_plausible.ps[control_intercept]
+
     sol_plausible  = solve(prob_plausible , Tsit5())
     plot!(sol_plausible ; label=["Cₛ(g/L)" "Cₓ(g/L)" "V(L)"], xlabel="t(h)", lw=3)
 end
