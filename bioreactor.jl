@@ -9,8 +9,10 @@ using Optimization, OptimizationOptimisers
 using SciMLStructures
 using SciMLStructures: Tunable
 using SciMLSensitivity
+using Statistics
 using SymbolicRegression
 using LuxCore
+using Statistics
 optimization_state =  [2.0, 4.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0]
 optimization_initial = optimization_state[1]
 @mtkmodel Bioreactor begin
@@ -143,7 +145,7 @@ plot_cb = (opt_state, loss,) -> begin
     false
 end
 
-res = solve(op, Optimization.LBFGS(), maxiters=100, callback=plot_cb)
+res = solve(op, Optimization.LBFGS(), maxiters=100) #, callback=plot_cb)
 
 new_p = SciMLStructures.replace(Tunable(), ude_prob.p, res.u)
 res_prob = remake(ude_prob, p=new_p)
@@ -221,6 +223,8 @@ plot!(tickfontsize=12, guidefontsize=14, legendfontsize=14, grid=false, dpi=600)
 
 optimization_state =  [0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0]
 plot(sol ; label=["Cₛ(g/L)" "Cₓ(g/L)" "V(L)"], xlabel="t(h)", lw=3)
+probs_plausible = Array{Any}(undef, length(model_structures))
+syms_cache = Array{Any}(undef, length(model_structures))
 for i in 1:length(model_structures)
     @mtkmodel PlausibleBioreactor begin
         @extend Bioreactor()
@@ -239,5 +243,53 @@ for i in 1:length(model_structures)
 
     plausible_sol = solve(plausible_prob, Rodas5P())
     plot!(plausible_sol; label=["Cₛ(g/L)" "Cₓ(g/L)" "V(L)"], xlabel="t(h)", lw=3)
+# optimize the control pars
+
+function S_criterion(control_pars, (probs_plausible, syms_cache))
+    n_structures = length(probs_plausible)
+    if n_structures == 1
+        # sometimes only a single model structure comes out of the equation search
+        return error("Only a single model structure.")
+    end
+    control_slope_value = control_pars[1]
+    control_intercept_value = control_pars[2]
+    sols = Array{Any}(undef, n_structures)
+    for i in 1:n_structures
+        prob_plausible = probs_plausible[i]
+        control_slope = syms_cache[i][1]
+        control_intercept = syms_cache[i][2]
+        prob_plausible.ps[control_slope] = control_slope_value
+        prob_plausible.ps[control_intercept] = control_intercept_value
+        sol_plausible = solve(prob_plausible , Rodas5P(),saveat=0.1)
+        sols[i] = sol_plausible
+    end
+    squared_differences = Float64[]
+    for i in 1:n_structures
+        for j in i+1:n_structures
+            push!(squared_differences, maximum((sols[i][1,:] .-sols[j][1,:]).^ 2)) # hardcoded first state, should be symbolic
+        end
+    end
+    ret = -minimum(squared_differences) # minus sign to minimize instead of maximize
+    # try mean instead of minimum...
+    println(ret)
+    return ret
+end
+S_criterion([0.0,0.0], (probs_plausible, syms_cache))
+
+lb = [-0.1, 1.5]
+ub = [10.0, 10.0]
+prob = OptimizationProblem(S_criterion, [-0.1,2.0], (probs_plausible, syms_cache), lb=lb, ub=ub)
+using Optimization, OptimizationBBO
+control_pars_opt = solve(prob, BBO_adaptive_de_rand_1_bin_radiuslimited(), maxtime=10.0)
+
+plot()
+for i in 1:length(model_structures)
+    prob_plausible = probs_plausible[i]
+    control_slope = syms_cache[i][1]
+    control_intercept = syms_cache[i][2]
+    prob_plausible.ps[control_slope] = 0.0
+    prob_plausible.ps[control_intercept] = 0.0
+    sol_plausible  = solve(prob_plausible , Rodas5P())
+    plot!(sol_plausible ; label=["Cₛ(g/L)" "Cₓ(g/L)" "V(L)"], xlabel="t(h)", lw=3)
 end
 plot!(tickfontsize=12, guidefontsize=14, legendfontsize=14, grid=false, dpi=600,legend=false)
