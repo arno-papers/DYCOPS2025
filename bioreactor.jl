@@ -9,7 +9,8 @@ using Optimization, OptimizationOptimisers
 using SciMLStructures
 using SciMLStructures: Tunable
 using SciMLSensitivity
-
+optimization_state =  [2.0, 4.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0]
+optimization_initial = optimization_state[1]
 @mtkmodel true_bioreactor begin
     @parameters begin
         C_s_in = 50.0
@@ -17,29 +18,43 @@ using SciMLSensitivity
         m = 0.0
         μ_max = 0.421
         K_s = 0.439
-        linear_control_slope = -0.1
-        linear_control_intercept = 2.0
+        controls[1:length(optimization_state)-1] = optimization_state[2:end] # zero vector
+        Q_in = optimization_initial # zero value # make the initial parameter value the first value of the control array, can't get it to work
     end
     @variables begin
         C_s(t) = 3.0
         C_x(t) = 0.25
         V(t) = 7.0
-        Q_in(t)
         μ(t)
         σ(t)
     end
     @equations begin
-        Q_in ~ linear_control_intercept + linear_control_slope * t # this needs to be swapped to piecewise constant function
-        μ ~ μ_max * C_s / (K_s + C_s) # this should be recovered from data
+        μ ~ μ_max * C_s / (K_s + C_s)
         σ ~ μ / y_x_s + m
         D(C_s) ~ -σ * C_x + Q_in / V * (C_s_in - C_s)
         D(C_x) ~ μ * C_x - Q_in / V * C_x
         D(V) ~ Q_in
     end
+    @discrete_events begin
+        (t == 1.0) => [Q_in ~ controls[1]]
+        (t == 2.0) => [Q_in ~ controls[2]]
+        (t == 3.0) => [Q_in ~ controls[3]]
+        (t == 4.0) => [Q_in ~ controls[4]]
+        (t == 5.0) => [Q_in ~ controls[5]]
+        (t == 6.0) => [Q_in ~ controls[6]]
+        (t == 7.0) => [Q_in ~ controls[7]]
+        (t == 8.0) => [Q_in ~ controls[8]]
+        (t == 9.0) => [Q_in ~ controls[9]]
+        (t == 10.0) => [Q_in ~ controls[10]]
+        (t == 11.0) => [Q_in ~ controls[11]]
+        (t == 12.0) => [Q_in ~ controls[12]]
+        (t == 13.0) => [Q_in ~ controls[13]]
+        (t == 14.0) => [Q_in ~ controls[14]]
+end
 end
 @mtkbuild true_bioreactor_f = true_bioreactor()
 prob = ODEProblem(true_bioreactor_f, [], (0.0, 15.0), [])
-sol = solve(prob, Tsit5())
+sol = solve(prob, Tsit5(), tstops = 0:15)
 plot(sol; label=["Cₛ(g/L)" "Cₓ(g/L)" "V(L)"], xlabel="t(h)", lw=3)
 plot!(tickfontsize=12, guidefontsize=14, legendfontsize=14, grid=false, dpi=600)
 
