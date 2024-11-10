@@ -10,17 +10,18 @@ using SciMLStructures
 using SciMLStructures: Tunable
 using SciMLSensitivity
 using SymbolicRegression
+using LuxCore
 optimization_state =  [2.0, 4.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0]
 optimization_initial = optimization_state[1]
-@mtkmodel true_bioreactor begin
-    @parameters begin
+@mtkmodel Bioreactor begin
+    @constants begin
         C_s_in = 50.0
         y_x_s = 0.777
         m = 0.0
-        μ_max = 0.421
-        K_s = 0.439
-        controls[1:length(optimization_state)-1] = optimization_state[2:end] # zero vector
-        Q_in = optimization_initial # zero value # make the initial parameter value the first value of the control array, can't get it to work
+    end
+    @parameters begin
+        controls[1:length(optimization_state)-1] = optimization_state[2:end], [tunable = false] # zero vector
+        Q_in = optimization_initial, [tunable = false] # zero value # make the initial parameter value the first value of the control array, can't get it to work
     end
     @variables begin
         C_s(t) = 3.0
@@ -30,7 +31,6 @@ optimization_initial = optimization_state[1]
         σ(t)
     end
     @equations begin
-        μ ~ μ_max * C_s / (K_s + C_s)
         σ ~ μ / y_x_s + m
         D(C_s) ~ -σ * C_x + Q_in / V * (C_s_in - C_s)
         D(C_x) ~ μ * C_x - Q_in / V * C_x
@@ -51,84 +51,66 @@ optimization_initial = optimization_state[1]
         (t == 12.0) => [Q_in ~ controls[12]]
         (t == 13.0) => [Q_in ~ controls[13]]
         (t == 14.0) => [Q_in ~ controls[14]]
+        (t == 15.0) => [Q_in ~ optimization_initial] # HACK TO GET Q_IN BACK TO ITS ORIGINAL VALUE
+    end
 end
+@mtkmodel TrueBioreactor begin
+    @extend Bioreactor()
+    @parameters begin
+        μ_max = 0.421
+        K_s = 0.439
+    end
+    @equations begin
+        μ ~ μ_max * C_s / (K_s + C_s) # this should be recovered from data
+    end
 end
-@mtkbuild true_bioreactor_f = true_bioreactor()
-prob = ODEProblem(true_bioreactor_f, [], (0.0, 15.0), [])
-sol = solve(prob, Tsit5(), tstops = 0:15)
-plot(sol; label=["Cₛ(g/L)" "Cₓ(g/L)" "V(L)"], xlabel="t(h)", lw=3)
+@mtkbuild true_bioreactor = TrueBioreactor()
+prob = ODEProblem(true_bioreactor, [], (0.0, 15.0), [], tstops = 0:15, saveat = 0:15)
+sol = solve(prob, Rodas5P())
+plot(sol; label=["Cₛ(g/L)" "Cₓ(g/L)" "V(L)"], xlabel="t(h)", lw=3);
 plot!(tickfontsize=12, guidefontsize=14, legendfontsize=14, grid=false, dpi=600)
 
-function incomplete_bioreactor(; name)
-    @parameters begin
-        C_s_in = 50.0, [tunable = false]
-        y_x_s = 0.777, [tunable = false]
-        m = 0.0, [tunable = false]
-        μ_max = 0.421, [tunable = false]
-        K_s = 0.439, [tunable = false]
-        linear_control_slope = -0.1, [tunable = false]
-        linear_control_intercept = 2.0, [tunable = false]
+@mtkmodel UDEBioreactor begin
+    @extend Bioreactor()
+    @structural_parameters begin
+        chain = multi_layer_feed_forward(1, 1)
     end
-    @variables begin
-        C_s(t) = 3.0
-        C_x(t) = 0.25
-        V(t) = 7.0
-        Q_in(t)
-        μ(t)
-        σ(t)
+    @components begin
+#=         nn_in = RealInputArray(nin=1)
+        nn_out = RealOutputArray(nout=1) =#
+        nn = NeuralNetworkBlock(; n_input=1, n_output=1, chain)
     end
-
-    @named nn_in = RealInputArray(nin=1)
-    @named nn_out = RealOutputArray(nout=1)
-
-    eqs = [
-        Q_in ~ linear_control_intercept + linear_control_slope * t # this needs to be swapped to piecewise constant function
-        μ ~ nn_out.u[1]
-        σ ~ μ / y_x_s + m
-        D(C_s) ~ -σ * C_x + Q_in / V * (C_s_in - C_s)
-        D(C_x) ~ μ * C_x - Q_in / V * C_x
-        D(V) ~ Q_in
+    @equations begin
+        nn.output.u[1] ~ μ
+        nn.input.u[1] ~ C_s
+#=         μ ~ nn_out.u[1]
         nn_in.u[1] ~ C_s
-    ]
-
-    return ODESystem(eqs, t; systems = [nn_in, nn_out], name)
+        connect(nn_in, nn.input)
+        connect(nn_out, nn.output) =#
+    end
 end
 
-function bioreactor_UDE(; name)
-    chain = multi_layer_feed_forward(1, 1)
+@mtkbuild  ude_bioreactor = UDEBioreactor()
 
-    @named bioreactor = incomplete_bioreactor()
-    @named nn = NeuralNetworkBlock(; n_input=1, n_output=1, chain)
-
-    eqs = [
-        connect(bioreactor.nn_in, nn.input)
-        connect(bioreactor.nn_out, nn.output)
-    ]
-    # note that defaults are (currently) required for the array variable due to
-    # issues in initialization
-    ODESystem(eqs, t; defaults=[nn.input.u => [0.0]], systems=[bioreactor, nn], name)
-end
-
-ude_sys = structural_simplify(bioreactor_UDE(name=:ude_sys))
-
-ude_prob = ODEProblem{true, SciMLBase.FullSpecialize}(ude_sys, [], (0.0, 15.0), [])
+ude_prob = ODEProblem(ude_bioreactor, [], (0.0, 15.0), [], tstops = 0:15, saveat = 0:15)
 ude_sol = solve(ude_prob, Rodas5P())
+plot(ude_sol; label=["Cₛ(g/L)" "Cₓ(g/L)" "V(L)"], xlabel="t(h)", lw=3);
+plot!(sol; label=["Cₛ(g/L)" "Cₓ(g/L)" "V(L)"], xlabel="t(h)", lw=3);
+plot!(tickfontsize=12, guidefontsize=14, legendfontsize=14, grid=false, dpi=600)
 
 # we use all tunable parameters because it's easier on the remake
-x0 = reduce(vcat, getindex.((default_values(ude_sys),), tunable_parameters(ude_sys)))
+x0 = reduce(vcat, getindex.((default_values(ude_bioreactor),), tunable_parameters(ude_bioreactor)))
 
-get_vars = getu(ude_sys, [ude_sys.bioreactor.V, ude_sys.bioreactor.C_s])
+get_vars = getu(ude_bioreactor, [ude_bioreactor.V, ude_bioreactor.C_s])
 # TODO: Switch to data with noise instead of comparing against the reference sol
-get_refs = getu(true_bioreactor_f, [true_bioreactor_f.V, true_bioreactor_f.C_s])
+get_refs = getu(true_bioreactor, [true_bioreactor.V, true_bioreactor.C_s])
 
 function loss(x, (prob, sol_ref, get_vars, get_refs))
     new_p = SciMLStructures.replace(Tunable(), prob.p, x)
     new_prob = remake(prob, p=new_p, u0=eltype(x).(prob.u0))
     ts = sol_ref.t
-    new_sol = solve(new_prob, Rodas5P(), saveat=ts)
-
+    new_sol = solve(new_prob, Rodas5P())
     loss = zero(eltype(x))
-
     for i in eachindex(new_sol.u)
         loss += sum(abs2.(get_vars(new_sol, i) .- get_refs(sol_ref, i)))
     end
@@ -166,12 +148,11 @@ res = solve(op, Optimization.LBFGS(), maxiters=100, callback=plot_cb)
 new_p = SciMLStructures.replace(Tunable(), ude_prob.p, res.u)
 res_prob = remake(ude_prob, p=new_p)
 res_sol = solve(res_prob, Rodas5P())
-plot(res_sol)
-scatter!(sol, idxs=[true_bioreactor_f.V, true_bioreactor_f.C_s], ms=0.4, msw=0)
+plot(res_sol; label=["Cₛ(g/L) trained" "Cₓ(g/L) trained" "V(L) trained"], xlabel="t(h)", lw=3);
+scatter!(sol; label=["Cₛ(g/L) true", "Cₓ(g/L) true", "V(L) true"], ms=3);
+plot!(tickfontsize=12, guidefontsize=14, legendfontsize=14, grid=false, dpi=600,legend=false)
 
-# continued by Arno
-
-using LuxCore
+# below this line no updates for the piecewise controls have been done yet.
 
 ## get chain from the equations
 extracted_chain = arguments(equations(ude_sys.nn)[1].rhs)[1]
@@ -184,7 +165,6 @@ plot( 0.0:0.1:40.0, μ_predicted )
 K_s = 0.439
 plot!(C_s_range, μ_max .* C_s_range ./ (K_s .+ C_s_range))
 ## get plausible model structures for missing physics
-using SymbolicRegression
 options = SymbolicRegression.Options(
     unary_operators=(exp, sin, cos),
     binary_operators=(+, *, /, -),
