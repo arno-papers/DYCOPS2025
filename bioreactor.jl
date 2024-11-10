@@ -9,6 +9,7 @@ using Optimization, OptimizationOptimisers
 using SciMLStructures
 using SciMLStructures: Tunable
 using SciMLSensitivity
+using SymbolicRegression
 optimization_state =  [2.0, 4.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0]
 optimization_initial = optimization_state[1]
 @mtkmodel true_bioreactor begin
