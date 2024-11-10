@@ -152,11 +152,9 @@ plot(res_sol; label=["Cₛ(g/L) trained" "Cₓ(g/L) trained" "V(L) trained"], xl
 scatter!(sol; label=["Cₛ(g/L) true", "Cₓ(g/L) true", "V(L) true"], ms=3);
 plot!(tickfontsize=12, guidefontsize=14, legendfontsize=14, grid=false, dpi=600,legend=false)
 
-# below this line no updates for the piecewise controls have been done yet.
-
 ## get chain from the equations
-extracted_chain = arguments(equations(ude_sys.nn)[1].rhs)[1]
-T = defaults(ude_sys)[ude_sys.nn.T]
+extracted_chain = arguments(equations(ude_bioreactor.nn)[1].rhs)[1]
+T = defaults(ude_bioreactor)[ude_bioreactor.nn.T]
 C_s = LuxCore.stateless_apply(extracted_chain, [20.0],convert(T,res.u))
 C_s_range = 0.0:0.1:40.0 # do something more elegant than 0 .. 40 later, e.g. 100 steps between max and min of res_sol
 μ_predicted = [only(LuxCore.stateless_apply(extracted_chain, [C_s], convert(T,res.u))) for C_s in C_s_range]
@@ -204,84 +202,42 @@ end
 plot!()
 
 ## get complete plausible model structures
-plot(sol ; label=["Cₛ(g/L)" "Cₓ(g/L)" "V(L)"], xlabel="t(h)", lw=3)
+plot(sol; label=["Cₛ(g/L)" "Cₓ(g/L)" "V(L)"], xlabel="t(h)", lw=3)
 for i in 1:length(model_structures)
-    @mtkmodel plausible_bioreactor begin
-        @parameters begin
-            C_s_in = 50.0
-            y_x_s = 0.777
-            m = 0.0
-            μ_max = 0.421
-            K_s = 0.439
-            linear_control_slope = -0.1
-            linear_control_intercept = 2.0
-        end
-        @variables begin
-            C_s(t) = 3.0
-            C_x(t) = 0.25
-            V(t) = 7.0
-            Q_in(t)
-            μ(t)
-            σ(t)
-        end
+    @mtkmodel PlausibleBioreactor begin
+        @extend Bioreactor()
         @equations begin
-            Q_in ~ linear_control_intercept + linear_control_slope * t # this needs to be swapped to piecewise constant function
             μ ~ model_structures[i](C_s)
-            σ ~ μ / y_x_s + m
-            D(C_s) ~ -σ * C_x + Q_in / V * (C_s_in - C_s)
-            D(C_x) ~ μ * C_x - Q_in / V * C_x
-            D(V) ~ Q_in
         end
     end
-    @mtkbuild plausible_bioreactor_f = plausible_bioreactor()
-    prob_plausible = ODEProblem(plausible_bioreactor_f, [], (0.0, 15.0), [])
-    sol_plausible  = solve(prob_plausible , Tsit5())
-    plot!(sol_plausible ; label=["Cₛ(g/L)" "Cₓ(g/L)" "V(L)"], xlabel="t(h)", lw=3)
+    @mtkbuild plausible_bioreactor = PlausibleBioreactor()
+    plausible_prob = ODEProblem(plausible_bioreactor, [], (0.0, 15.0), [], tstops = 0:15, saveat = 0:15)
+    plausible_sol = solve(plausible_prob, Rodas5P())
+    plot!(plausible_sol ; label=["Cₛ(g/L)" "Cₓ(g/L)" "V(L)"], xlabel="t(h)", lw=3)
 end
 plot!(tickfontsize=12, guidefontsize=14, legendfontsize=14, grid=false, dpi=600)
 
 ## simulate with different controls
 
-## get complete plausible model structures
+optimization_state =  [0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0]
 plot(sol ; label=["Cₛ(g/L)" "Cₓ(g/L)" "V(L)"], xlabel="t(h)", lw=3)
 for i in 1:length(model_structures)
-    @mtkmodel plausible_bioreactor begin
-        @parameters begin
-            C_s_in = 50.0
-            y_x_s = 0.777
-            m = 0.0
-            μ_max = 0.421
-            K_s = 0.439
-            linear_control_slope = -0.1
-            linear_control_intercept = 2.0
-        end
-        @variables begin
-            C_s(t) = 3.0
-            C_x(t) = 0.25
-            V(t) = 7.0
-            Q_in(t)
-            μ(t)
-            σ(t)
-        end
+    @mtkmodel PlausibleBioreactor begin
+        @extend Bioreactor()
         @equations begin
-            Q_in ~ linear_control_intercept + linear_control_slope * t # this needs to be swapped to piecewise constant function
             μ ~ model_structures[i](C_s)
-            σ ~ μ / y_x_s + m
-            D(C_s) ~ -σ * C_x + Q_in / V * (C_s_in - C_s)
-            D(C_x) ~ μ * C_x - Q_in / V * C_x
-            D(V) ~ Q_in
         end
     end
-    @mtkbuild plausible_bioreactor_f = plausible_bioreactor()
-    prob_plausible = ODEProblem(plausible_bioreactor_f, [], (0.0, 15.0), [])
+    @mtkbuild plausible_bioreactor = PlausibleBioreactor()
+    plausible_prob = ODEProblem(plausible_bioreactor, [], (0.0, 15.0), [], tstops = 0:15, saveat = 0:15)
 
-    control_slope = plausible_bioreactor_f.linear_control_slope
-    control_intercept = plausible_bioreactor_f.linear_control_intercept
+    callback_controls = plausible_bioreactor.controls
+    initial_control = plausible_bioreactor.Q_in
 
-    prob_plausible.ps[control_slope] = 2 * prob_plausible.ps[control_slope]
-    prob_plausible.ps[control_intercept] = 2 * prob_plausible.ps[control_intercept]
+    plausible_prob.ps[callback_controls] = optimization_state[2:end]
+    plausible_prob.ps[initial_control] = optimization_state[1]
 
-    sol_plausible  = solve(prob_plausible , Tsit5())
-    plot!(sol_plausible ; label=["Cₛ(g/L)" "Cₓ(g/L)" "V(L)"], xlabel="t(h)", lw=3)
+    plausible_sol = solve(plausible_prob, Rodas5P())
+    plot!(plausible_sol; label=["Cₛ(g/L)" "Cₓ(g/L)" "V(L)"], xlabel="t(h)", lw=3)
 end
-plot!(tickfontsize=12, guidefontsize=14, legendfontsize=14, grid=false, dpi=600)
+plot!(tickfontsize=12, guidefontsize=14, legendfontsize=14, grid=false, dpi=600,legend=false)
