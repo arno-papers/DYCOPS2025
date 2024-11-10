@@ -2743,7 +2743,7 @@ version = "0.2.2"
 deps = ["ADTypes", "Compat", "ConstructionBase", "Dates", "DifferentiationInterface", "DispatchDoctor", "Distributed", "DynamicExpressions", "DynamicQuantities", "LineSearches", "Logging", "LossFunctions", "MLJModelInterface", "MacroTools", "Optim", "Pkg", "PrecompileTools", "Printf", "ProgressMeter", "Random", "Reexport", "SpecialFunctions", "StatsBase", "StyledStrings", "TOML"]
 git-tree-sha1 = "9553ac53dd1b8eece201343c16fe77eb331550eb"
 repo-rev = "bumps"
-repo-url = "git@github.com:SebastianM-C/SymbolicRegression.jl.git"
+repo-url = "https://github.com/SebastianM-C/SymbolicRegression.jl"
 uuid = "8254be44-1295-4e6a-a16d-46603ac705cb"
 version = "1.0.0"
 
