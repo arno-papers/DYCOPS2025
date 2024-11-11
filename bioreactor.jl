@@ -13,6 +13,8 @@ using Statistics
 using SymbolicRegression
 using LuxCore
 using Statistics
+using DataFrames
+
 optimization_state =  [2.0, 4.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0]
 optimization_initial = optimization_state[1]
 @mtkmodel Bioreactor begin
@@ -67,7 +69,7 @@ end
     end
 end
 @mtkbuild true_bioreactor = TrueBioreactor()
-prob = ODEProblem(true_bioreactor, [], (0.0, 15.0), [], tstops = 0:15, saveat = 0:15)
+prob = ODEProblem(true_bioreactor, [], (0.0, 15.0), [], tstops = 0:15, save_everystep=false)
 sol = solve(prob, Rodas5P())
 plot(sol; label=["Cₛ(g/L)" "Cₓ(g/L)" "V(L)"], xlabel="t(h)", lw=3);
 plot!(tickfontsize=12, guidefontsize=14, legendfontsize=14, grid=false, dpi=600)
@@ -94,7 +96,7 @@ end
 
 @mtkbuild  ude_bioreactor = UDEBioreactor()
 
-ude_prob = ODEProblem(ude_bioreactor, [], (0.0, 15.0), [], tstops = 0:15, saveat = 0:15)
+ude_prob = ODEProblem(ude_bioreactor, [], (0.0, 15.0), [], tstops = 0:15, save_everystep=false)
 ude_sol = solve(ude_prob, Rodas5P())
 plot(ude_sol; label=["Cₛ(g/L)" "Cₓ(g/L)" "V(L)"], xlabel="t(h)", lw=3);
 plot!(sol; label=["Cₛ(g/L)" "Cₓ(g/L)" "V(L)"], xlabel="t(h)", lw=3);
@@ -103,18 +105,30 @@ plot!(tickfontsize=12, guidefontsize=14, legendfontsize=14, grid=false, dpi=600)
 # we use all tunable parameters because it's easier on the remake
 x0 = reduce(vcat, getindex.((default_values(ude_bioreactor),), tunable_parameters(ude_bioreactor)))
 
-get_vars = getu(ude_bioreactor, [ude_bioreactor.V, ude_bioreactor.C_s])
+get_vars = getu(ude_bioreactor, [ude_bioreactor.C_s])
 # TODO: Switch to data with noise instead of comparing against the reference sol
-get_refs = getu(true_bioreactor, [true_bioreactor.V, true_bioreactor.C_s])
+data = DataFrame(sol)
+data = data[1:2:end, :]
 
-function loss(x, (prob, sol_ref, get_vars, get_refs))
+sd_cs = 1
+data[!, "C_s(t)"] += sd_cs * randn(size(data, 1))
+
+plot(sol)
+scatter!(data[!, "timestamp"], data[!, "C_s(t)"]; label="Cₛ(g/L) true", ms=3);
+scatter!(data[!, "timestamp"], data[!, "C_x(t)"]; label="Cₓ(g/L) true", ms=3);
+scatter!(data[!, "timestamp"], data[!, "V(t)"]; label="V(L) true", ms=3)
+
+# get_refs = getu(true_bioreactor, [true_bioreactor.V, true_bioreactor.C_s])
+
+function loss(x, (prob, sol_ref, get_vars, data))
     new_p = SciMLStructures.replace(Tunable(), prob.p, x)
     new_prob = remake(prob, p=new_p, u0=eltype(x).(prob.u0))
     ts = sol_ref.t
     new_sol = solve(new_prob, Rodas5P())
     loss = zero(eltype(x))
-    for i in eachindex(new_sol.u)
-        loss += sum(abs2.(get_vars(new_sol, i) .- get_refs(sol_ref, i)))
+    for (i, j) in enumerate(1:2:length(new_sol.t))
+        # @info "i: $i j: $j"
+        loss += sum(abs2.(get_vars(new_sol, j) .- data[!, "C_s(t)"][i]))
     end
 
     if SciMLBase.successful_retcode(new_sol)
@@ -127,14 +141,14 @@ function loss(x, (prob, sol_ref, get_vars, get_refs))
 end
 
 of = OptimizationFunction{true}(loss, AutoZygote())
-ps = (ude_prob, sol, get_vars, get_refs);
+ps = (ude_prob, sol, get_vars, data);
 
 op = OptimizationProblem(of, x0, ps)
 of(x0, ps)[1]
 
 plot_cb = (opt_state, loss,) -> begin
     @info "step $(opt_state.iter), loss: $loss"
-    @info opt_state.u
+    # @info opt_state.u
 
     new_p = SciMLStructures.replace(Tunable(), ude_prob.p, opt_state.u)
     new_prob = remake(ude_prob, p = new_p)
@@ -145,13 +159,17 @@ plot_cb = (opt_state, loss,) -> begin
     false
 end
 
-res = solve(op, Optimization.LBFGS(), maxiters=100) #, callback=plot_cb)
+res = solve(op, Optimization.LBFGS(), maxiters=1000, callback=plot_cb)
 
 new_p = SciMLStructures.replace(Tunable(), ude_prob.p, res.u)
 res_prob = remake(ude_prob, p=new_p)
 res_sol = solve(res_prob, Rodas5P())
 plot(res_sol; label=["Cₛ(g/L) trained" "Cₓ(g/L) trained" "V(L) trained"], xlabel="t(h)", lw=3);
-scatter!(sol; label=["Cₛ(g/L) true", "Cₓ(g/L) true", "V(L) true"], ms=3);
+scatter!(data[!, "timestamp"], data[!, "C_s(t)"]; label=["Cₛ(g/L) true",], ms=3);
+scatter!(data[!, "timestamp"], data[!, "C_x(t)"]; label=["Cₓ(g/L) true",], ms=3);
+scatter!(data[!, "timestamp"], data[!, "V(t)"]; label=["V(L) true"], ms=3);
+
+
 plot!(tickfontsize=12, guidefontsize=14, legendfontsize=14, grid=false, dpi=600,legend=false)
 
 ## get chain from the equations
