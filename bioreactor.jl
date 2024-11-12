@@ -239,8 +239,8 @@ plot!(tickfontsize=12, guidefontsize=14, legendfontsize=14, grid=false, dpi=600)
 
 ## simulate with different controls
 
-optimization_state =  [0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0]
-plot(sol ; label=["Cₛ(g/L)" "Cₓ(g/L)" "V(L)"], xlabel="t(h)", lw=3)
+optimization_state = [0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0]
+plot(sol; label=["Cₛ(g/L)" "Cₓ(g/L)" "V(L)"], xlabel="t(h)", lw=3)
 probs_plausible = Array{Any}(undef, length(model_structures))
 syms_cache = Array{Any}(undef, length(model_structures))
 for i in 1:length(model_structures)
@@ -251,12 +251,13 @@ for i in 1:length(model_structures)
         end
     end
     @mtkbuild plausible_bioreactor = PlausibleBioreactor()
-    plausible_prob = ODEProblem(plausible_bioreactor, [], (0.0, 15.0), [], tstops = 0:15, saveat = 0:15)
+    plausible_prob = ODEProblem(plausible_bioreactor, [], (0.0, 15.0), [], tstops=0:15, saveat=0:15)
     probs_plausible[i] = plausible_prob
 
     callback_controls = plausible_bioreactor.controls
     initial_control = plausible_bioreactor.Q_in
-    syms_cache[i] = (callback_controls, initial_control)
+
+    syms_cache[i] = (callback_controls, initial_control, plausible_bioreactor.C_s)
 
     plausible_prob.ps[callback_controls] = optimization_state[2:end]
     plausible_prob.ps[initial_control] = optimization_state[1]
@@ -276,7 +277,7 @@ function S_criterion(optimization_state, (probs_plausible, syms_cache))
     sols = Array{Any}(undef, n_structures)
     for i in 1:n_structures
         plausible_prob = probs_plausible[i]
-        callback_controls, initial_control  = syms_cache[i]
+        callback_controls, initial_control, C_s = syms_cache[i]
         plausible_prob.ps[callback_controls] = optimization_state[2:end]
         plausible_prob.ps[initial_control] = optimization_state[1]
         sol_plausible = solve(plausible_prob, Rodas5P())
@@ -284,8 +285,9 @@ function S_criterion(optimization_state, (probs_plausible, syms_cache))
     end
     squared_differences = Float64[]
     for i in 1:n_structures
+        callback_controls, initial_control, C_s = syms_cache[i]
         for j in i+1:n_structures
-            push!(squared_differences, maximum((sols[i][1,:] .-sols[j][1,:]).^ 2)) # hardcoded first state, should be symbolic
+            push!(squared_differences, maximum((sols[i][C_s] .- sols[j][C_s]) .^ 2)) # hardcoded first state, should be symbolic
         end
     end
     ret = -minimum(squared_differences) # minus sign to minimize instead of maximize
@@ -296,17 +298,17 @@ end
 S_criterion(zeros(15), (probs_plausible, syms_cache))
 
 lb = zeros(15)
-ub = 10*ones(15)
+ub = 10 * ones(15)
 prob = OptimizationProblem(S_criterion, zeros(15), (probs_plausible, syms_cache), lb=lb, ub=ub)
 control_pars_opt = solve(prob, BBO_adaptive_de_rand_1_bin_radiuslimited(), maxtime=2.0)
 
 plot()
 for i in 1:length(model_structures)
     plausible_prob = probs_plausible[i]
-    callback_controls, initial_control  = syms_cache[i]
+    callback_controls, initial_control, C_s = syms_cache[i]
     plausible_prob.ps[callback_controls] = control_pars_opt[2:end]
     plausible_prob.ps[initial_control] = control_pars_opt[1]
-    sol_plausible  = solve(plausible_prob , Rodas5P())
+    sol_plausible = solve(plausible_prob, Rodas5P())
     plot!(sol_plausible; label=["Cₛ(g/L)" "Cₓ(g/L)" "V(L)"], xlabel="t(h)", lw=3)
 end
-plot!(tickfontsize=12, guidefontsize=14, legendfontsize=14, grid=false, dpi=600,legend=false)
+plot!(tickfontsize=12, guidefontsize=14, legendfontsize=14, grid=false, dpi=600, legend=false)
