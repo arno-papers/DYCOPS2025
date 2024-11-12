@@ -15,7 +15,7 @@ using LuxCore
 using Statistics
 using DataFrames
 
-optimization_state =  [2.0, 4.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0]
+optimization_state =  [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 optimization_initial = optimization_state[1]
 @mtkmodel Bioreactor begin
     @constants begin
@@ -62,7 +62,7 @@ end
     @extend Bioreactor()
     @parameters begin
         μ_max = 0.421
-        K_s = 0.439
+        K_s = 0.439*10
     end
     @equations begin
         μ ~ μ_max * C_s / (K_s + C_s) # this should be recovered from data
@@ -159,7 +159,7 @@ plot_cb = (opt_state, loss,) -> begin
     false
 end
 
-res = solve(op, Optimization.LBFGS(), maxiters=1000, callback=plot_cb)
+res = solve(op, Optimization.LBFGS(), maxiters=1000)
 
 new_p = SciMLStructures.replace(Tunable(), ude_prob.p, res.u)
 res_prob = remake(ude_prob, p=new_p)
@@ -235,7 +235,7 @@ for i in 1:length(model_structures)
     plausible_sol = solve(plausible_prob, Rodas5P())
     plot!(plausible_sol ; label=["Cₛ(g/L)" "Cₓ(g/L)" "V(L)"], xlabel="t(h)", lw=3)
 end
-plot!(tickfontsize=12, guidefontsize=14, legendfontsize=14, grid=false, dpi=600)
+plot!(tickfontsize=12, guidefontsize=14, legendfontsize=14, grid=false, dpi=600, legend=false)
 
 ## simulate with different controls
 
@@ -265,7 +265,7 @@ for i in 1:length(model_structures)
     plausible_sol = solve(plausible_prob, Rodas5P())
     plot!(plausible_sol; label=["Cₛ(g/L)" "Cₓ(g/L)" "V(L)"], xlabel="t(h)", lw=3)
 end
-plot!(tickfontsize=12, guidefontsize=14, legendfontsize=14, grid=false, dpi=600)
+plot!(tickfontsize=12, guidefontsize=14, legendfontsize=14, grid=false, dpi=600, legend=false)
 # optimize the control pars
 
 function S_criterion(optimization_state, (probs_plausible, syms_cache))
@@ -300,7 +300,7 @@ S_criterion(zeros(15), (probs_plausible, syms_cache))
 lb = zeros(15)
 ub = 10 * ones(15)
 prob = OptimizationProblem(S_criterion, zeros(15), (probs_plausible, syms_cache), lb=lb, ub=ub)
-control_pars_opt = solve(prob, BBO_adaptive_de_rand_1_bin_radiuslimited(), maxtime=2.0)
+control_pars_opt = solve(prob, BBO_adaptive_de_rand_1_bin_radiuslimited(), maxtime=60.0)
 
 plot()
 for i in 1:length(model_structures)
