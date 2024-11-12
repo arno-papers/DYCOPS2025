@@ -14,6 +14,7 @@ using SymbolicRegression
 using LuxCore
 using Statistics
 using DataFrames
+using OptimizationMOI, Ipopt
 
 optimization_state =  [2.0, 4.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0]
 optimization_initial = optimization_state[1]
@@ -62,7 +63,7 @@ end
     @extend Bioreactor()
     @parameters begin
         μ_max = 0.421
-        K_s = 0.439
+        K_s = 4.39
     end
     @equations begin
         μ ~ μ_max * C_s / (K_s + C_s) # this should be recovered from data
@@ -120,7 +121,7 @@ scatter!(data[!, "timestamp"], data[!, "V(t)"]; label="V(L) true", ms=3)
 
 # get_refs = getu(true_bioreactor, [true_bioreactor.V, true_bioreactor.C_s])
 
-function loss(x, (prob, sol_ref, get_vars, data))
+function loss(x, (prob, sol_ref, get_vars, data, nn_C_s))
     new_p = SciMLStructures.replace(Tunable(), prob.p, x)
     new_prob = remake(prob, p=new_p, u0=eltype(x).(prob.u0))
     ts = sol_ref.t
@@ -140,10 +141,18 @@ function loss(x, (prob, sol_ref, get_vars, data))
     loss
 end
 
-of = OptimizationFunction{true}(loss, AutoZygote())
-ps = (ude_prob, sol, get_vars, data);
+extracted_chain = arguments(equations(ude_bioreactor.nn)[1].rhs)[1]
+T = defaults(ude_bioreactor)[ude_bioreactor.nn.T]
+nn_C_s(μ, θ) = LuxCore.stateless_apply(extracted_chain, [μ], convert(T, θ))
 
-op = OptimizationProblem(of, x0, ps)
+function cstr_residual(res, x, (prob, sol_ref, get_vars, data, nn_C_s))
+    res .= nn_C_s(0.0, x)
+end
+
+of = OptimizationFunction{true}(loss, AutoZygote(); cons=cstr_residual)
+ps = (ude_prob, sol, get_vars, data, nn_C_s);
+
+op = OptimizationProblem(of, x0, ps, lcons=[0.0], ucons=[0.0])
 of(x0, ps)[1]
 
 plot_cb = (opt_state, loss,) -> begin
@@ -159,7 +168,24 @@ plot_cb = (opt_state, loss,) -> begin
     false
 end
 
-res = solve(op, Optimization.LBFGS(), maxiters=1000, callback=plot_cb)
+function IpoptOptimizer(;
+    verbose=false,
+    tol=1e-4,
+    max_iter=1000,
+    acceptable_iter=250,
+    acceptable_tol=1e-3,
+    hessian_approximation="limited-memory", kwargs...)
+    return OptimizationMOI.MOI.OptimizerWithAttributes(Ipopt.Optimizer,
+        "tol" => tol, "max_iter" => isnothing(max_iter) ? 1000 : max_iter,
+        "acceptable_tol" => acceptable_tol,
+        "acceptable_iter" => isnothing(max_iter) ? 250 : acceptable_iter,
+        "print_level" => verbose isa Bool ? verbose * 5 : verbose,
+        "hessian_approximation" => hessian_approximation,
+        [string(k) => v for (k, v) in kwargs]...)
+end
+
+
+res = solve(op, IpoptOptimizer(), callback=plot_cb)
 
 new_p = SciMLStructures.replace(Tunable(), ude_prob.p, res.u)
 res_prob = remake(ude_prob, p=new_p)
