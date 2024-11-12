@@ -312,3 +312,76 @@ for i in 1:length(model_structures)
     plot!(sol_plausible; label=["Cₛ(g/L)" "Cₓ(g/L)" "V(L)"], xlabel="t(h)", lw=3)
 end
 plot!(tickfontsize=12, guidefontsize=14, legendfontsize=14, grid=false, dpi=600, legend=false)
+
+
+optimization_state = control_pars_opt.u
+
+@mtkbuild true_bioreactor2 = TrueBioreactor()
+prob2 = ODEProblem(true_bioreactor, [], (0.0, 15.0), [], tstops=0:15, save_everystep=false)
+sol2 = solve(prob, Rodas5P())
+plot(sol2; label=["Cₛ(g/L)" "Cₓ(g/L)" "V(L)"], xlabel="t(h)", lw=3);
+plot!(tickfontsize=12, guidefontsize=14, legendfontsize=14, grid=false, dpi=600)
+
+@mtkbuild ude_bioreactor2 = UDEBioreactor()
+
+ude_prob2 = ODEProblem(ude_bioreactor2, [], (0.0, 15.0), [], tstops=0:15, save_everystep=false)
+ude_sol2 = solve(ude_prob2, Rodas5P())
+plot(ude_sol2; label=["Cₛ(g/L)" "Cₓ(g/L)" "V(L)"], xlabel="t(h)", lw=3);
+plot!(sol2; label=["Cₛ(g/L)" "Cₓ(g/L)" "V(L)"], xlabel="t(h)", lw=3);
+plot!(tickfontsize=12, guidefontsize=14, legendfontsize=14, grid=false, dpi=600)
+
+# we use all tunable parameters because it's easier on the remake
+x0 = reduce(vcat, getindex.((default_values(ude_bioreactor2),), tunable_parameters(ude_bioreactor2)))
+
+get_vars2 = getu(ude_bioreactor2, [ude_bioreactor2.C_s])
+
+data2 = DataFrame(sol2)
+data2 = data2[1:2:end, :]
+
+sd_cs = 1
+data2[!, "C_s(t)"] += sd_cs * randn(size(data2, 1))
+
+function loss2(x, (prob1, prob2, get_vars1, get_vars2, data1, data2))
+    new_p1 = SciMLStructures.replace(Tunable(), prob1.p, x)
+    new_prob1 = remake(prob1, p=new_p1, u0=eltype(x).(prob1.u0))
+
+    new_p2 = SciMLStructures.replace(Tunable(), prob2.p, x)
+    new_prob2 = remake(prob1, p=new_p2, u0=eltype(x).(prob2.u0))
+
+    new_sol1 = solve(new_prob1, Rodas5P())
+    new_sol2 = solve(new_prob2, Rodas5P())
+
+
+    loss = zero(eltype(x))
+    for (i, j) in enumerate(1:2:length(new_sol1.t))
+        # @info "i: $i j: $j"
+        loss += sum(abs2.(get_vars1(new_sol1, j) .- data1[!, "C_s(t)"][i]))
+        loss += sum(abs2.(get_vars2(new_sol2, j) .- data2[!, "C_s(t)"][i]))
+    end
+
+    if SciMLBase.successful_retcode(new_sol1) && SciMLBase.successful_retcode(new_sol2)
+        loss
+    else
+        Inf
+    end
+
+    loss
+end
+
+of = OptimizationFunction{true}(loss2, AutoZygote())
+ps = (ude_prob, ude_prob2, get_vars, get_vars2, data, data2);
+
+op = OptimizationProblem(of, x0, ps)
+
+res = solve(op, Optimization.LBFGS(), maxiters=1000)
+
+new_p = SciMLStructures.replace(Tunable(), ude_prob2.p, res.u)
+res_prob = remake(ude_prob2, p=new_p)
+res_sol = solve(res_prob, Rodas5P())
+plot(res_sol; label=["Cₛ(g/L) trained" "Cₓ(g/L) trained" "V(L) trained"], xlabel="t(h)", lw=3);
+scatter!(data2[!, "timestamp"], data2[!, "C_s(t)"]; label=["Cₛ(g/L) true",], ms=3);
+scatter!(data2[!, "timestamp"], data2[!, "C_x(t)"]; label=["Cₓ(g/L) true",], ms=3);
+scatter!(data2[!, "timestamp"], data2[!, "V(t)"]; label=["V(L) true"], ms=3);
+
+
+plot!(tickfontsize=12, guidefontsize=14, legendfontsize=14, grid=false, dpi=600, legend=false)
