@@ -12,8 +12,10 @@ using SciMLSensitivity
 using Statistics
 using SymbolicRegression
 using LuxCore
+using Lux
 using Statistics
 using DataFrames
+using Random; Random.seed!(984519674645)
 
 function plot3!(plts, sol)
     plot!(plts[1], sol, idxs=:C_s, title="Cₛ(g/L)", xlabel="t(h)", lw=3)
@@ -83,7 +85,9 @@ plot!(tickfontsize=12, guidefontsize=14, legendfontsize=14, grid=false, dpi=600)
 @mtkmodel UDEBioreactor begin
     @extend Bioreactor()
     @structural_parameters begin
-        chain = multi_layer_feed_forward(1, 1)
+        chain = Lux.Chain(Lux.Dense(1, 5, tanh, use_bias=Lux.False()),
+                          Lux.Dense(5, 5, tanh, use_bias=Lux.False()),
+                          Lux.Dense(5, 1, Lux.relu,  use_bias=Lux.False()))
     end
     @components begin
 #=         nn_in = RealInputArray(nin=1)
@@ -116,7 +120,7 @@ get_vars = getu(ude_bioreactor, [ude_bioreactor.C_s])
 data = DataFrame(sol)
 data = data[1:2:end, :]
 
-sd_cs = 1
+sd_cs = sqrt(0.1)
 data[!, "C_s(t)"] += sd_cs * randn(size(data, 1))
 
 plot(sol)
@@ -182,12 +186,16 @@ plot!(tickfontsize=12, guidefontsize=14, legendfontsize=14, grid=false, dpi=600,
 extracted_chain = arguments(equations(ude_bioreactor.nn)[1].rhs)[1]
 T = defaults(ude_bioreactor)[ude_bioreactor.nn.T]
 C_s = LuxCore.stateless_apply(extracted_chain, [20.0],convert(T,res.u))
-C_s_range = 0.0:0.1:40.0 # do something more elegant than 0 .. 40 later, e.g. 100 steps between max and min of res_sol
+C_s_range = range(minimum(data[!, "C_s(t)"]),maximum(data[!, "C_s(t)"]),100)
+C_s_range_plot = 0.0:0.01:10.0
 μ_predicted = [only(LuxCore.stateless_apply(extracted_chain, [C_s], convert(T,res.u))) for C_s in C_s_range]
-plot( 0.0:0.1:40.0, μ_predicted )
+μ_predicted_plot = [only(LuxCore.stateless_apply(extracted_chain, [C_s], convert(T,res.u))) for C_s in C_s_range_plot]
+
 μ_max = 0.421
-K_s = 0.439
-plot!(C_s_range, μ_max .* C_s_range ./ (K_s .+ C_s_range))
+K_s = 0.439*10
+plot(C_s_range_plot, μ_max .* C_s_range_plot ./ (K_s .+ C_s_range_plot))
+plot!(C_s_range_plot, μ_predicted_plot)
+scatter!(data[!, "C_s(t)"],  μ_max .* data[!, "C_s(t)"] ./ (K_s .+data[!, "C_s(t)"]))
 ## get plausible model structures for missing physics
 options = SymbolicRegression.Options(
     unary_operators=(exp, sin, cos),
@@ -214,7 +222,7 @@ for i = 1:n_best
     fi = build_function(eqn, x, expression=Val{false})
     x_plot = Float64[]
     y_plot = Float64[]
-    for x_try in 0.0:0.1:10.0
+    for x_try in C_s_range_plot
         try
             y_try = fi(x_try)
             append!(x_plot, x_try)
