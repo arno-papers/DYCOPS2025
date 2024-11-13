@@ -15,6 +15,12 @@ using LuxCore
 using Statistics
 using DataFrames
 
+function plot3!(plts, sol)
+    plot!(plts[1], sol, idxs=:C_s, title="Cₛ(g/L)", xlabel="t(h)", lw=3)
+    plot!(plts[2], sol, idxs=:C_x, title="Cₓ(g/L)", xlabel="t(h)", lw=3)
+    plot!(plts[3], sol, idxs=:V, title="V(L)", xlabel="t(h)", lw=3)
+end
+
 optimization_state =  [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 optimization_initial = optimization_state[1]
 @mtkmodel Bioreactor begin
@@ -302,13 +308,14 @@ ub = 10 * ones(15)
 prob = OptimizationProblem(S_criterion, zeros(15), (probs_plausible, syms_cache), lb=lb, ub=ub)
 control_pars_opt = solve(prob, BBO_adaptive_de_rand_1_bin_radiuslimited(), maxtime=60.0)
 
-plot()
+plts = plot(), plot(), plot()
 for i in 1:length(model_structures)
     plausible_prob = probs_plausible[i]
     callback_controls, initial_control, C_s = syms_cache[i]
     plausible_prob.ps[callback_controls] = control_pars_opt[2:end]
     plausible_prob.ps[initial_control] = control_pars_opt[1]
     sol_plausible = solve(plausible_prob, Rodas5P())
-    plot!(sol_plausible; label=["Cₛ(g/L)" "Cₓ(g/L)" "V(L)"], xlabel="t(h)", lw=3)
+    # plot!(sol_plausible; label=["Cₛ(g/L)" "Cₓ(g/L)" "V(L)"], xlabel="t(h)", lw=3)
+    plot3!(plts, sol_plausible)
 end
-plot!(tickfontsize=12, guidefontsize=14, legendfontsize=14, grid=false, dpi=600, legend=false)
+plot(plts..., tickfontsize=12, guidefontsize=14, legendfontsize=14, grid=false, dpi=600, legend=false)
