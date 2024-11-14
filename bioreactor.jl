@@ -193,7 +193,7 @@ C_s_train =
 
 μ_max = 0.421
 K_s = 0.439*10
-plot(C_s_range_plot, μ_max .* C_s_range_plot ./ (K_s .+ C_s_range_plot))
+plt = plot(C_s_range_plot, μ_max .* C_s_range_plot ./ (K_s .+ C_s_range_plot))
 plot!(C_s_range_plot, μ_predicted_plot)
 predicted_data = [only(LuxCore.stateless_apply(extracted_chain, [C_s], convert(T,res.u))) for C_s in data[!, "C_s(t)"]]
 scatter!(data[!, "C_s(t)"],  predicted_data)
@@ -231,24 +231,33 @@ eqn = node_to_symbolic(best_models[1].tree, options, variable_names=["x"])
 f = build_function(eqn, x, expression=Val{false})
 f.(collect(C_s_range)')
 
-model_structures = []
-for i = 1:n_best
-    eqn = node_to_symbolic(best_models[i].tree, options, varMap=["x"])
-    fi = build_function(eqn, x, expression=Val{false})
-    x_plot = Float64[]
-    y_plot = Float64[]
-    for x_try in C_s_range_plot
-        try
-            y_try = fi(x_try)
-            append!(x_plot, x_try)
-            append!(y_plot, y_try)
-        catch
+function get_model_structures(best_models, options, n_best, plt)
+    model_structures = []
+    @syms x
+
+    for i = 1:n_best
+        eqn = node_to_symbolic(best_models[i].tree, options, varMap=["x"])
+        fi = build_function(eqn, x, expression=Val{false})
+        x_plot = Float64[]
+        y_plot = Float64[]
+        for x_try in C_s_range_plot
+            try
+                y_try = fi(x_try)
+                append!(x_plot, x_try)
+                append!(y_plot, y_try)
+            catch
+            end
         end
+        plot!(plt, x_plot, y_plot, label="model $i")
+        push!(model_structures, fi)
     end
-    plot!(x_plot, y_plot, label="model $i")
-    push!(model_structures, fi)
+    plot!(plt, legend=false,ylims=(0,1))
+
+    return model_structures
 end
-plot!(legend=false,ylims=(0,1))
+
+model_structures = get_model_structures(best_models, options, n_best, plt)
+plt
 
 ## get complete plausible model structures
 plot(sol; label=["Cₛ(g/L)" "Cₓ(g/L)" "V(L)"], xlabel="t(h)", lw=3)
@@ -431,7 +440,7 @@ extracted_chain = arguments(equations(ude_bioreactor2.nn)[1].rhs)[1]
 T = defaults(ude_bioreactor2)[ude_bioreactor2.nn.T]
 μ_predicted_plot2 = [only(LuxCore.stateless_apply(extracted_chain, [C_s], convert(T,res.u))) for C_s in C_s_range_plot]
 
-plot(C_s_range_plot, μ_max .* C_s_range_plot ./ (K_s .+ C_s_range_plot))
+plt = plot(C_s_range_plot, μ_max .* C_s_range_plot ./ (K_s .+ C_s_range_plot))
 plot!(C_s_range_plot, μ_predicted_plot)
 plot!(C_s_range_plot, μ_predicted_plot2)
 predicted_data1 = [only(LuxCore.stateless_apply(extracted_chain, [C_s], convert(T,res.u))) for C_s in data[!, "C_s(t)"]]
@@ -459,24 +468,27 @@ while length(best_models) <= n_best
 end
 best_models
 
-model_structures = []
-for i = 1:n_best
-    eqn = node_to_symbolic(best_models[i].tree, options, varMap=["x"])
-    fi = build_function(eqn, x, expression=Val{false})
-    x_plot = Float64[]
-    y_plot = Float64[]
-    for x_try in C_s_range_plot
-        try
-            y_try = fi(x_try)
-            append!(x_plot, x_try)
-            append!(y_plot, y_try)
-        catch
-        end
-    end
-    plot!(x_plot, y_plot, label="model $i")
-    push!(model_structures, fi)
-end
-plot!(legend=false)
+# model_structures = []
+# for i = 1:n_best
+#     eqn = node_to_symbolic(best_models[i].tree, options, varMap=["x"])
+#     fi = build_function(eqn, x, expression=Val{false})
+#     x_plot = Float64[]
+#     y_plot = Float64[]
+#     for x_try in C_s_range_plot
+#         try
+#             y_try = fi(x_try)
+#             append!(x_plot, x_try)
+#             append!(y_plot, y_try)
+#         catch
+#         end
+#     end
+#     plot!(x_plot, y_plot, label="model $i")
+#     push!(model_structures, fi)
+# end
+# plot!(legend=false)
+
+model_structures = get_model_structures(best_models, options, n_best, plt)
+plt
 
 model_structures = []
 probs_plausible = []
