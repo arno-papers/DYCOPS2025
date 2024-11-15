@@ -16,6 +16,9 @@ using Lux
 using Statistics
 using DataFrames
 using Random; Random.seed!(984519674645)
+using StableRNGs
+
+rng = StableRNG(123)
 
 function plot3!(plts, sol)
     plot!(plts[1], sol, idxs=:C_s, title="Cₛ(g/L)", xlabel="t(h)", lw=3)
@@ -92,7 +95,7 @@ plot!(tickfontsize=12, guidefontsize=14, legendfontsize=14, grid=false, dpi=600)
     @components begin
 #=         nn_in = RealInputArray(nin=1)
         nn_out = RealOutputArray(nout=1) =#
-        nn = NeuralNetworkBlock(; n_input=1, n_output=1, chain)
+        nn = NeuralNetworkBlock(; n_input=1, n_output=1, chain, rng)
     end
     @equations begin
         nn.output.u[1] ~ μ
