@@ -75,7 +75,7 @@ end
                           Lux.Dense(5, 1, x->1*sigmoid(x)))
     end
     @components begin
-        nn = NeuralNetworkBlock(; n_input=1, n_output=1, chain)
+        nn = NeuralNetworkBlock(; n_input=1, n_output=1, chain, rng)
     end
     @equations begin
         nn.output.u[1] ~ μ

@@ -1,4 +1,5 @@
 using Random; Random.seed!(984519674645)
+using StableRNGs; rng = StableRNG(845652695)
 include("definitions.jl")
 
 # first experiment
