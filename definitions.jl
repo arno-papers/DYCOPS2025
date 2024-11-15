@@ -5,7 +5,7 @@ using ModelingToolkitStandardLibrary.Blocks
 using OrdinaryDiffEqTsit5, OrdinaryDiffEqNonlinearSolve, OrdinaryDiffEqRosenbrock
 using SymbolicIndexingInterface
 using Plots
-using Optimization, OptimizationOptimisers, OptimizationBBO
+using Optimization, OptimizationOptimisers, OptimizationBBO, OptimizationNLopt
 using SciMLStructures
 using SciMLStructures: Tunable
 using SciMLSensitivity

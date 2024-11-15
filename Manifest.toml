@@ -2,7 +2,7 @@
 
 julia_version = "1.11.1"
 manifest_format = "2.0"
-project_hash = "c144c684829357d02e8d4402ce086f267bb1e812"
+project_hash = "4c49724fd7933d3c1e4517bee03ab08a1cc3684b"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "eea5d80188827b35333801ef97a40c2ed653b081"
@@ -1698,6 +1698,24 @@ git-tree-sha1 = "a0b464d183da839699f4c79e7606d9d186ec172c"
 uuid = "d41bc354-129a-5804-8e4c-c37616107c6c"
 version = "7.8.3"
 
+[[deps.NLopt]]
+deps = ["CEnum", "NLopt_jll"]
+git-tree-sha1 = "81a321298aed95631447a1f3afc2ea83682d44a4"
+uuid = "76087f3c-5699-56af-9a33-bf431cd00edd"
+version = "1.1.1"
+
+    [deps.NLopt.extensions]
+    NLoptMathOptInterfaceExt = ["MathOptInterface"]
+
+    [deps.NLopt.weakdeps]
+    MathOptInterface = "b8f27783-ece8-5eb3-8dc8-9495eed66fee"
+
+[[deps.NLopt_jll]]
+deps = ["Artifacts", "JLLWrappers", "Libdl"]
+git-tree-sha1 = "3d1eefa627faeabc59ab9edbf00d17f70123ad69"
+uuid = "079eb43e-fd8e-5478-9966-2cf3e3edb778"
+version = "2.8.0+0"
+
 [[deps.NNlib]]
 deps = ["Adapt", "Atomix", "ChainRulesCore", "GPUArraysCore", "KernelAbstractions", "LinearAlgebra", "Random", "Statistics"]
 git-tree-sha1 = "da09a1e112fd75f9af2a5229323f01b56ec96a4c"
@@ -1864,6 +1882,12 @@ version = "2.4.0"
     ReverseDiff = "37e2e3b7-166d-5795-8a7a-e32c996b4267"
     SymbolicAnalysis = "4297ee4d-0239-47d8-ba5d-195ecdf594fe"
     Zygote = "e88e6eb3-aa80-5325-afca-941959d7151f"
+
+[[deps.OptimizationNLopt]]
+deps = ["NLopt", "Optimization", "Random", "Reexport"]
+git-tree-sha1 = "b10f05325c42cb22b81d7524e066f7802f1d8a98"
+uuid = "4e6fcdb7-1186-4e1f-a706-475e75c168bb"
+version = "0.3.1"
 
 [[deps.OptimizationOptimisers]]
 deps = ["Optimisers", "Optimization", "Printf", "ProgressLogging", "Reexport"]
