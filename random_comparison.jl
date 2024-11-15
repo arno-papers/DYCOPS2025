@@ -6,7 +6,7 @@ function loss3(x, (prob1, prob2, prob3, get_vars1, get_vars2, get_vars3, data1, 
     new_prob1 = remake(prob1, p=new_p1, u0=eltype(x).(prob1.u0))
 
     new_p2 = SciMLStructures.replace(Tunable(), prob2.p, x)
-    new_prob2 = remake(prob1, p=new_p2, u0=eltype(x).(prob2.u0))
+    new_prob2 = remake(prob2, p=new_p2, u0=eltype(x).(prob2.u0))
 
     new_p3 = SciMLStructures.replace(Tunable(), prob3.p, x)
     new_prob3 = remake(prob3, p=new_p3, u0=eltype(x).(prob3.u0))
