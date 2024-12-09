@@ -33,8 +33,8 @@ res_sol = solve(res_prob, Rodas5P())
 extracted_chain = arguments(equations(ude_bioreactor.nn)[1].rhs)[1]
 T = defaults(ude_bioreactor)[ude_bioreactor.nn.T]
 C_s_range_plot = 0.0:0.01:50.0
-μ_predicted_plot = [only(LuxCore.stateless_apply(extracted_chain, [C_s], convert(T,res.u))) for C_s in C_s_range_plot]
-μ_predicted_data = [only(LuxCore.stateless_apply(extracted_chain, [C_s], convert(T,res.u))) for C_s in data[!, "C_s(t)"]]
+μ_predicted_plot = [only(stateless_apply(extracted_chain, [C_s], convert(T,res.u))) for C_s in C_s_range_plot]
+μ_predicted_data = [only(stateless_apply(extracted_chain, [C_s], convert(T,res.u))) for C_s in data[!, "C_s(t)"]]
 
 ## get plausible model structures for missing physics
 
@@ -127,10 +127,10 @@ res_sol = solve(res_prob, Rodas5P())
 ## get chain from the equations
 extracted_chain = arguments(equations(ude_bioreactor2.nn)[1].rhs)[1]
 T = defaults(ude_bioreactor2)[ude_bioreactor2.nn.T]
-μ_predicted_plot2 = [only(LuxCore.stateless_apply(extracted_chain, [C_s], convert(T,res.u))) for C_s in C_s_range_plot]
+μ_predicted_plot2 = [only(stateless_apply(extracted_chain, [C_s], convert(T,res.u))) for C_s in C_s_range_plot]
 
-μ_predicted_data = [only(LuxCore.stateless_apply(extracted_chain, [C_s], convert(T,res.u))) for C_s in data[!, "C_s(t)"]]
-μ_predicted_data2 = [only(LuxCore.stateless_apply(extracted_chain, [C_s], convert(T,res.u))) for C_s in data2[!, "C_s(t)"]]
+μ_predicted_data = [only(stateless_apply(extracted_chain, [C_s], convert(T,res.u))) for C_s in data[!, "C_s(t)"]]
+μ_predicted_data2 = [only(stateless_apply(extracted_chain, [C_s], convert(T,res.u))) for C_s in data2[!, "C_s(t)"]]
 
 total_data = hcat(collect(data[!, "C_s(t)"]'), collect(data2[!, "C_s(t)"]'))
 total_predicted_data =  vcat(μ_predicted_data, μ_predicted_data2)
@@ -224,9 +224,9 @@ plot!(sol3)
 extracted_chain = arguments(equations(ude_bioreactor3.nn)[1].rhs)[1]
 T = defaults(ude_bioreactor3)[ude_bioreactor3.nn.T]
 
-μ_predicted_data = [only(LuxCore.stateless_apply(extracted_chain, [C_s], convert(T,res.u))) for C_s in data[!, "C_s(t)"]]
-μ_predicted_data2 = [only(LuxCore.stateless_apply(extracted_chain, [C_s], convert(T,res.u))) for C_s in data2[!, "C_s(t)"]]
-μ_predicted_data3 = [only(LuxCore.stateless_apply(extracted_chain, [C_s], convert(T,res.u))) for C_s in data3[!, "C_s(t)"]]
+μ_predicted_data = [only(stateless_apply(extracted_chain, [C_s], convert(T,res.u))) for C_s in data[!, "C_s(t)"]]
+μ_predicted_data2 = [only(stateless_apply(extracted_chain, [C_s], convert(T,res.u))) for C_s in data2[!, "C_s(t)"]]
+μ_predicted_data3 = [only(stateless_apply(extracted_chain, [C_s], convert(T,res.u))) for C_s in data3[!, "C_s(t)"]]
 
 total_data = hcat(collect(data[!, "C_s(t)"]'), collect(data2[!, "C_s(t)"]'), collect(data3[!, "C_s(t)"]'))
 total_predicted_data =  vcat(μ_predicted_data, μ_predicted_data2, μ_predicted_data3)
@@ -238,7 +238,7 @@ model_structures = get_model_structures(hall_of_fame, options, n_best)
 probs_plausible, syms_cache = get_probs_and_caches(model_structures);
 
 plot()
-μ_predicted_plot3 = [only(LuxCore.stateless_apply(extracted_chain, [C_s], convert(T,res.u))) for C_s in C_s_range_plot]
+μ_predicted_plot3 = [only(stateless_apply(extracted_chain, [C_s], convert(T,res.u))) for C_s in C_s_range_plot]
 for i in 1:length(model_structures)
     plot!(C_s_range_plot, model_structures[i].( C_s_range_plot);c=i+2,lw=1,ls=:dash)
 end

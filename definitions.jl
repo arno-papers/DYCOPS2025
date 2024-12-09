@@ -1,8 +1,7 @@
 using ModelingToolkit
 using ModelingToolkit: t_nounits as t, D_nounits as D
 using ModelingToolkitNeuralNets
-using ModelingToolkitStandardLibrary.Blocks
-using OrdinaryDiffEqTsit5, OrdinaryDiffEqNonlinearSolve, OrdinaryDiffEqRosenbrock
+using OrdinaryDiffEqRosenbrock
 using SymbolicIndexingInterface
 using Plots
 using Optimization, OptimizationOptimisers, OptimizationBBO, OptimizationNLopt
@@ -12,6 +11,7 @@ using SciMLSensitivity
 using Statistics
 using SymbolicRegression
 using LuxCore
+using LuxCore: stateless_apply
 using Lux
 using Statistics
 using DataFrames
