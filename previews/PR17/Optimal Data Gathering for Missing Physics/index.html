@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Optimal Data Gathering for Missing Physics. · ARNO AND SEBASTIAN DYCOPS 2024</title><meta name="title" content="Optimal Data Gathering for Missing Physics. · ARNO AND SEBASTIAN DYCOPS 2024"/><meta property="og:title" content="Optimal Data Gathering for Missing Physics. · ARNO AND SEBASTIAN DYCOPS 2024"/><meta property="twitter:title" content="Optimal Data Gathering for Missing Physics. · ARNO AND SEBASTIAN DYCOPS 2024"/><meta name="description" content="Documentation for ARNO AND SEBASTIAN DYCOPS 2024."/><meta property="og:description" content="Documentation for ARNO AND SEBASTIAN DYCOPS 2024."/><meta property="twitter:description" content="Documentation for ARNO AND SEBASTIAN DYCOPS 2024."/><script data-outdated-warner src="../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../assets/documenter.js"></script><script src="../search_index.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href>ARNO AND SEBASTIAN DYCOPS 2024</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li class="is-active"><a class="tocitem" href>Optimal Data Gathering for Missing Physics.</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>Optimal Data Gathering for Missing Physics.</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Optimal Data Gathering for Missing Physics.</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/arno-papers/DYCOPS2024" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/arno-papers/DYCOPS2024/blob/main/docs/src/Optimal Data Gathering for Missing Physics.md" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Optimal-Data-Gathering-for-Missing-Physics."><a class="docs-heading-anchor" href="#Optimal-Data-Gathering-for-Missing-Physics.">Optimal Data Gathering for Missing Physics.</a><a id="Optimal-Data-Gathering-for-Missing-Physics.-1"></a><a class="docs-heading-anchor-permalink" href="#Optimal-Data-Gathering-for-Missing-Physics." title="Permalink"></a></h1><p><a href="https://docs.sciml.ai/Overview/stable/showcase/missing_physics/">The missing physics showcase</a> teaches how to discover the missing parts of a dynamic model, using universal differential equations (UDE) and symbolic regression (SR).</p><p>High quality data is needed to ensure the true dynamics are recovered. In this tutorial, we look at an efficient data gathering technique for SciML models, using a bioreactor example. To this end, we will rely on the following packages:</p><pre><code class="language-julia hljs">using Random; Random.seed!(984519674645)
+using StableRNGs; rng = StableRNG(845652695)
+using ModelingToolkit
+using ModelingToolkit: t_nounits as t, D_nounits as D
+using ModelingToolkitNeuralNets
+using OrdinaryDiffEqRosenbrock
+using SymbolicIndexingInterface
+using Plots
+using Optimization, OptimizationOptimisers, OptimizationBBO, OptimizationNLopt
+using SciMLStructures
+using SciMLStructures: Tunable
+using SciMLSensitivity
+using Statistics
+using SymbolicRegression
+using LuxCore
+using LuxCore: stateless_apply
+using Lux
+using Statistics
+using DataFrames</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Precompiling UnitfulExt...
+   4056.2 ms  ✓ Qt6ShaderTools_jll
+   1318.7 ms  ✓ Qt6Declarative_jll
+    631.3 ms  ✓ Qt6Wayland_jll
+  80924.0 ms  ✓ Plots → UnitfulExt
+  4 dependencies successfully precompiled in 88 seconds. 180 already precompiled.
+┌ Warning: Module Plots with build ID fafbfcfd-4f55-2d7e-0000-01162c17f42a is missing from the cache.
+│ This may mean Plots [91a5bcdd-55d7-5caf-9e0b-520d859cae80] does not support precompilation but is imported by a module that does.
+└ @ Base loading.jl:2541</code></pre><p>The bioreactor consists of 3 states: substrate concentration <span>$C_s(t)$</span>, biomass concentration <span>$C_x(t)$</span> and volume <span>$V(t)$</span>.</p><p class="math-container">\[\begin{aligned}
+\frac{dC_s}{dt} &amp;= -\left(\frac{\mu(C_s)}{y_{x,s}} + m\right) C_x + \frac{Q_{in}(t)}{V}(C_{S,in} - C_s),\\
+\frac{dC_x}{dt} &amp;= \mu(C_s) C_x - \frac{Q_{in}(t)}{V}C_x,\\
+\frac{dV}{dt} &amp;= Q_{in}(t).
+\end{aligned}\]</p><p>The substrate is eaten by the biomass, causing the biomass to grow. The rate by which the biomass grows <span>$μ(t)$</span> is an unknown function (missing physics), which must be estimated from experimental data. The rate by which the substrate is consumed <span>$σ(t)$</span> is dependent on <span>$μ(t)$</span>, trough a yield factor <span>$y_{x:s}$</span> and a maintenance term <span>$m$</span>, where are assumed to be known parameters. More substrate can be pumped into the reactor  with pumping speed <span>$Q_in(t)$</span>. This pumped substrate has known concentration <span>$C_{s_{in}}$</span>. The goal is to optimize the control action <span>$Q_{in}(t)$</span>, such that <span>$μ(t)$</span> can be estimated as precisely as possible. We restrict <span>$Q_{in}(t)$</span> to piecewise constant functions. This can be implemented in MTK as:</p><pre><code class="language-julia hljs">@mtkmodel Bioreactor begin
+    @constants begin
+        C_s_in = 50.0
+        y_x_s = 0.777
+        m = 0.0
+    end
+    @parameters begin
+        controls[1:length(optimization_state)-1] = optimization_state[2:end], [tunable = false] # optimization_state is defined further below
+        Q_in = optimization_initial, [tunable = false] # similar for optimization state
+    end
+    @variables begin
+        C_s(t) = 1.0
+        C_x(t) = 1.0
+        V(t) = 7.0
+        μ(t)
+        σ(t)
+    end
+    @equations begin
+        σ ~ μ / y_x_s + m
+        D(C_s) ~ -σ * C_x + Q_in / V * (C_s_in - C_s)
+        D(C_x) ~ μ * C_x - Q_in / V * C_x
+        D(V) ~ Q_in
+    end
+    @discrete_events begin
+        (t == 1.0) =&gt; [Q_in ~ controls[1]]
+        (t == 2.0) =&gt; [Q_in ~ controls[2]]
+        (t == 3.0) =&gt; [Q_in ~ controls[3]]
+        (t == 4.0) =&gt; [Q_in ~ controls[4]]
+        (t == 5.0) =&gt; [Q_in ~ controls[5]]
+        (t == 6.0) =&gt; [Q_in ~ controls[6]]
+        (t == 7.0) =&gt; [Q_in ~ controls[7]]
+        (t == 8.0) =&gt; [Q_in ~ controls[8]]
+        (t == 9.0) =&gt; [Q_in ~ controls[9]]
+        (t == 10.0) =&gt; [Q_in ~ controls[10]]
+        (t == 11.0) =&gt; [Q_in ~ controls[11]]
+        (t == 12.0) =&gt; [Q_in ~ controls[12]]
+        (t == 13.0) =&gt; [Q_in ~ controls[13]]
+        (t == 14.0) =&gt; [Q_in ~ controls[14]]
+        (t == 15.0) =&gt; [Q_in ~ optimization_initial] # HACK TO GET Q_IN BACK TO ITS ORIGINAL VALUE
+    end
+end</code></pre><p>The true value of <span>$μ(t)$</span>, which must be recovered is the Monod equation.</p><p class="math-container">\[\begin{equation*}
+\mu(C_s) = \frac{\mu_{max}C_s}{K_s + C_s}.
+\end{equation*}\]</p><p>We thus extend the bioreactor MTK model with this equation:</p><pre><code class="language-julia hljs">@mtkmodel TrueBioreactor begin
+    @extend Bioreactor()
+    @parameters begin
+        μ_max = 0.421
+        K_s = 0.439*10
+    end
+    @equations begin
+        μ ~ μ_max * C_s / (K_s + C_s)
+    end
+end</code></pre><p>Similarly, we can extend the bioreactor with a neural network to represent this missing physics.</p><pre><code class="language-julia hljs">@mtkmodel UDEBioreactor begin
+    @extend Bioreactor()
+    @structural_parameters begin
+        chain = Lux.Chain(Lux.Dense(1, 5, tanh),
+                          Lux.Dense(5, 5, tanh),
+                          Lux.Dense(5, 1, x-&gt;1*sigmoid(x)))
+    end
+    @components begin
+        nn = NeuralNetworkBlock(; n_input=1, n_output=1, chain, rng)
+    end
+    @equations begin
+        nn.output.u[1] ~ μ
+        nn.input.u[1] ~ C_s
+    end
+end</code></pre><p>We start by gathering some initial data. Because we don&#39;t yet know anything about the missing physics, we arbitrarily pick the zero control action. The only state we measure is <span>$C_s$</span> We also add some noise to the simulated data, to make it more realistic:</p><pre><code class="language-julia hljs">optimization_state =  zeros(15)
+optimization_initial = optimization_state[1] # HACK CAN&#39;T GET THIS TO WORK WITHOUT SEPARATE SCALAR
+@mtkbuild true_bioreactor = TrueBioreactor()
+prob = ODEProblem(true_bioreactor, [], (0.0, 15.0), [], tstops = 0:15, save_everystep=false)
+sol = solve(prob, Rodas5P())
+
+@mtkbuild  ude_bioreactor = UDEBioreactor()
+ude_prob = ODEProblem(ude_bioreactor, [], (0.0, 15.0), [], tstops = 0:15, save_everystep=false)
+ude_sol = solve(ude_prob, Rodas5P())
+
+data = DataFrame(sol)
+data = data[1:2:end, :] # HACK TO GET ONLY THE MEASUREMENTS WE NEED; MTK ALWAYS SAVES BEFORE AND AFTER CALLBACK; WITH NO OPTION TO DISABLE
+
+sd_cs = 0.1
+data[!, &quot;C_s(t)&quot;] += sd_cs * randn(size(data, 1))
+
+plts = plot(), plot(), plot(), plot()
+plot!(plts[1], sol, idxs=:C_s, lw=3,c=1)
+plot!(plts[1], ylabel=&quot;Cₛ(g/L)&quot;, xlabel=&quot;t(h)&quot;)
+scatter!(plts[1], data[!, &quot;timestamp&quot;], data[!, &quot;C_s(t)&quot;]; ms=3,c=1)
+plot!(plts[2], sol, idxs=:C_x, lw=3,c=1)
+plot!(plts[2], ylabel=&quot;Cₓ(g/L)&quot;, xlabel=&quot;t(h)&quot;)
+plot!(plts[3], sol, idxs=:V, ylabel=&quot;V(L)&quot;, xlabel=&quot;t(h)&quot;, lw=3, color=:black, ylims=(6.0,8.0))
+C_s_range_plot = 0.0:0.01:50.0
+μ_max = 0.421; K_s = 0.439*10 # TODO extract the  values from the model.
+plot!(plts[4], C_s_range_plot, μ_max .* C_s_range_plot ./ (K_s .+ C_s_range_plot), lw=3, c=1)
+plot!(plts[4], ylabel=&quot;μ(1/h)&quot;, xlabel=&quot;Cₛ(g/L)&quot;,ylims=(0,0.5))
+plot(plts..., layout = 4, tickfontsize=10, guidefontsize=12, legendfontsize=14, grid=false, legend=false)</code></pre><img src="2f4798ba.svg" alt="Example block output"/><p>Now we can train the neural network to match this data:</p><pre><code class="language-julia hljs">function loss(x, (probs, get_varss, datas))
+    loss = zero(eltype(x))
+    for i in eachindex(probs)
+        prob = probs[i]
+        get_vars = get_varss[i]
+        data = datas[i]
+        new_p = SciMLStructures.replace(Tunable(), prob.p, x)
+        new_prob = remake(prob, p=new_p, u0=eltype(x).(prob.u0))
+        new_sol = solve(new_prob, Rodas5P())
+        for (i, j) in enumerate(1:2:length(new_sol.t)) # HACK TO DEAL WITH DOUBLE SAVE
+            loss += sum(abs2.(get_vars(new_sol, j) .- data[!, &quot;C_s(t)&quot;][i]))
+        end
+        if !(SciMLBase.successful_retcode(new_sol))
+            println(&quot;failed&quot;)
+            return Inf
+        end
+    end
+    loss
+end
+of = OptimizationFunction{true}(loss, AutoZygote())
+x0 = reduce(vcat, getindex.((default_values(ude_bioreactor),), tunable_parameters(ude_bioreactor)))
+get_vars = getu(ude_bioreactor, [ude_bioreactor.C_s])
+ps = ([ude_prob], [get_vars], [data]);
+op = OptimizationProblem(of, x0, ps)
+res = solve(op, Optimization.LBFGS(), maxiters=1000)
+
+new_p = SciMLStructures.replace(Tunable(), ude_prob.p, res.u)
+res_prob = remake(ude_prob, p=new_p)
+res_sol = solve(res_prob, Rodas5P())
+
+extracted_chain = arguments(equations(ude_bioreactor.nn)[1].rhs)[1]
+T = defaults(ude_bioreactor)[ude_bioreactor.nn.T]
+μ_predicted_plot = [only(stateless_apply(extracted_chain, [C_s], convert(T,res.u))) for C_s in C_s_range_plot]
+μ_predicted_data = [only(stateless_apply(extracted_chain, [C_s], convert(T,res.u))) for C_s in data[!, &quot;C_s(t)&quot;]]
+
+plts = plot(), plot(), plot(), plot()
+plot!(plts[1], sol, idxs=:C_s, lw=3,c=1)
+plot!(plts[1], res_sol, idxs=:C_s, lw=3,c=2)
+plot!(plts[1], ylabel=&quot;Cₛ(g/L)&quot;, xlabel=&quot;t(h)&quot;)
+scatter!(plts[1], data[!, &quot;timestamp&quot;], data[!, &quot;C_s(t)&quot;]; ms=3,c=1)
+plot!(plts[2], sol, idxs=:C_x, lw=3,c=1)
+plot!(plts[2], res_sol, idxs=:C_x, lw=3,c=2)
+plot!(plts[2], ylabel=&quot;Cₓ(g/L)&quot;, xlabel=&quot;t(h)&quot;)
+plot!(plts[3], sol, idxs=:V, ylabel=&quot;V(L)&quot;, xlabel=&quot;t(h)&quot;, lw=3, color=:black, ylims=(6.0,8.0))
+plot!(plts[4], C_s_range_plot, μ_max .* C_s_range_plot ./ (K_s .+ C_s_range_plot), lw=3, c=1)
+plot!(plts[4], C_s_range_plot, μ_predicted_plot, lw=3, c=2)
+scatter!(plts[4], data[!, &quot;C_s(t)&quot;], μ_predicted_data, ms=3, c=2)
+plot!(plts[4], ylabel=&quot;μ(1/h)&quot;, xlabel=&quot;Cₛ(g/L)&quot;,ylims=(0,0.5))
+plot(plts..., layout = 4, tickfontsize=10, guidefontsize=12, legendfontsize=14, grid=false, legend=false)</code></pre><img src="4ac142b2.svg" alt="Example block output"/><p>On the above figure we see that the neural network predicts <span>$C_s$</span> well, except during the final hours of the experiment, where we have multiple positive realizations of the noise in a row. The neural network also predicts <span>$µ$</span> well in the low substrate concentration region, where we have available data. However, the fit is poor at higher substrate concentrations, where we do not have data.</p><p>We continue by making the neural network interpretable using symbolic regression.</p><pre><code class="language-julia hljs">options = SymbolicRegression.Options(
+    unary_operators=(exp, sin, cos),
+    binary_operators=(+, *, /, -),
+    seed=123,
+    deterministic=true,
+    save_to_file=false
+)
+hall_of_fame = equation_search(collect(data[!, &quot;C_s(t)&quot;])&#39;, μ_predicted_data; options, niterations=1000, runtests=false, parallelism=:serial)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">HallOfFame{...}:
+    .exists[1] = true
+    .members[1] = PopMember(tree = (0.03461630933539235), loss = 0.0004772054111745523, score = 0.047720541117455224)
+    .exists[2] = true
+    .members[2] = PopMember(tree = (sin(0.03462872076362889)), loss = 0.00047720544132579516, score = 0.047720544132579513)
+    .exists[3] = true
+    .members[3] = PopMember(tree = (x1 * 0.07508049851626074), loss = 6.245993939753664e-5, score = 0.006245993939753664)
+    .exists[4] = true
+    .members[4] = PopMember(tree = (sin(x1) * 0.08341979318445461), loss = 5.142519002676616e-5, score = 0.005142519002676616)
+    .exists[5] = true
+    .members[5] = PopMember(tree = (sin(sin(x1)) * 0.08996292553213395), loss = 5.027765297942683e-5, score = 0.005027765297942683)
+    .exists[6] = true
+    .members[6] = PopMember(tree = (exp(-0.39327972945244905 / x1) * 0.0974407516668412), loss = 3.686019512511157e-5, score = 0.003686019512511157)
+    .exists[7] = true
+    .members[7] = PopMember(tree = (exp(-0.39369004795924345 / x1) * sin(0.09760396398508474)), loss = 3.6860987450156937e-5, score = 0.0036860987450156937)
+    .exists[8] = true
+    .members[8] = PopMember(tree = ((sin(2.518262885717172 - x1) * 0.1883399665948093) + -0.1250267985733005), loss = 3.435685183748005e-5, score = 0.003435685183748005)
+    .exists[9] = true
+    .members[9] = PopMember(tree = ((sin(sin(2.5977647400472264 - x1)) * 0.2362007954695496) + -0.13481519012910054), loss = 3.427423201731642e-5, score = 0.003427423201731642)
+    .exists[10] = true
+    .members[10] = PopMember(tree = (sin(sin(sin(2.600546326272928 - x1)) * 0.2382273505614773) + -0.1351518190159462), loss = 3.426915365474368e-5, score = 0.0034269153654743678)
+    .exists[11] = true
+    .members[11] = PopMember(tree = ((sin(sin((2.760366033714959 - x1) / 1.1071355168716595)) * 0.30069021407744007) + -0.18901873112618633), loss = 3.4182931174807874e-5, score = 0.0034182931174807875)
+    .exists[12] = true
+    .members[12] = PopMember(tree = (x1 * (x1 / (sin(1.096732215905458 / x1) + exp(exp(x1))))), loss = 1.8820886132287942e-5, score = 0.0018820886132287942)
+    .exists[13] = true
+    .members[13] = PopMember(tree = ((x1 / (sin(exp(0.3551738961687992 / x1)) + exp(exp(x1)))) * x1), loss = 1.790639772048319e-5, score = 0.0017906397720483188)
+    .exists[14] = true
+    .members[14] = PopMember(tree = ((x1 * x1) / ((sin(1.0830462044830114 / x1) / 0.735584753743258) + exp(exp(x1)))), loss = 1.5963021140482346e-5, score = 0.0015963021140482346)
+    .exists[15] = true
+    .members[15] = PopMember(tree = ((x1 * x1) / (exp(exp(x1)) + sin(1.185752125541754 / sin(1.0989712654864805 / x1)))), loss = 1.2875910991410869e-5, score = 0.0012875910991410869)
+    .exists[16] = true
+    .members[16] = PopMember(tree = (x1 * (x1 / ((sin(1.0764517872546306 / x1) / (x1 - -0.36411790330591054)) + exp(exp(x1))))), loss = 1.1870066146229424e-5, score = 0.0011870066146229424)
+    .exists[17] = true
+    .members[17] = PopMember(tree = ((x1 / ((sin(exp(0.354509005210081 / x1)) / (x1 - -0.28131080914664586)) + exp(exp(x1)))) * x1), loss = 6.3096663563076265e-6, score = 0.0006309666356307626)
+    .exists[18] = true
+    .members[18] = PopMember(tree = (x1 * (x1 / (exp(exp(x1)) + (sin(sin(exp(0.35396123712895167 / x1))) / (x1 - -0.22224671208886942))))), loss = 6.040152094033613e-6, score = 0.0006040152094033613)
+    .exists[19] = true
+    .members[19] = PopMember(tree = ((x1 * x1) / ((sin(exp(0.35911257919256345 / x1)) / ((x1 - 0.11565419619672157) / x1)) + exp(exp(x1)))), loss = 5.5035502080678e-6, score = 0.00055035502080678)
+    .exists[20] = true
+    .members[20] = PopMember(tree = ((x1 * x1) / ((sin(sin(exp(0.361145920503288 / x1))) / ((x1 - 0.1277695459651075) / x1)) + exp(exp(x1)))), loss = 4.371922994777022e-6, score = 0.0004371922994777022)
+    .exists[21] = true
+    .members[21] = PopMember(tree = (x1 * (x1 / (exp(exp(x1)) + (sin(sin(sin(exp(0.36212872222217396 / x1)))) / ((x1 - 0.13598655890556657) / x1))))), loss = 3.93006967660296e-6, score = 0.00039300696766029597)
+    .exists[22] = true
+    .members[22] = PopMember(tree = (x1 * (x1 / ((sin(sin(sin(exp(0.36212872224031106 / x1)))) / ((x1 - sin(0.13598655893606426)) / x1)) + exp(exp(x1))))), loss = 3.932194321608421e-6, score = 0.00039321943216084204)
+    .exists[23] = true
+    .members[23] = PopMember(tree = ((((x1 / (exp(exp(x1)) + (x1 / ((x1 - 0.09372190845665604) / sin(exp(0.3542571221366439 / x1)))))) * 1.3586683628873875) + -0.024868034892338412) * x1), loss = 2.8176663922419484e-6, score = 0.0002817666392241948)
+    .exists[24] = true
+    .members[24] = PopMember(tree = (x1 * ((sin(1.3363526303625566 / (exp(exp(x1)) + (x1 / ((x1 - 0.10727730361291306) / sin(exp(0.3558977174443648 / x1)))))) * x1) + -0.02254782603538679)), loss = 2.3861551805486764e-6, score = 0.00023861551805486763)
+    .exists[25] = true
+    .members[25] = PopMember(tree = ((x1 * ((x1 * (1.3551662433667482 / (exp(exp(x1)) + (x1 / ((x1 - 0.09959260397610456) / sin(exp(0.3567962976891989 / x1))))))) + -0.021529763758689573)) - 0.002003144275150193), loss = 2.0741998688718535e-6, score = 0.00020741998688718534)
+    .exists[26] = true
+    .members[26] = PopMember(tree = (((1.3458822159838588 * ((x1 / (exp(exp(x1)) + (sin(x1) / ((x1 - 0.10142855381029298) / sin(exp(0.35685349244437276 / x1)))))) + -0.01652911070252711)) * x1) - 0.0016835594385766388), loss = 2.0612190963573654e-6, score = 0.00020612190963573653)
+    .exists[27] = true
+    .members[27] = PopMember(tree = (((((x1 * 1.3671580094699) / (exp(exp(x1)) + ((x1 + 0.03161519119332771) / ((x1 - 0.08129729573415381) / sin(exp(0.35613500550464977 / x1)))))) + -0.02209897777230289) * x1) - 0.002108758426238565), loss = 2.0409734795256094e-6, score = 0.00020409734795256095)
+    .exists[28] = true
+    .members[28] = PopMember(tree = ((x1 * (((x1 * 1.3670159645236433) / (exp(exp(x1)) + ((sin(x1) + 0.03305333952335773) / ((x1 - 0.08201883346042192) / sin(exp(0.35620788447399465 / x1)))))) + -0.023420101052859185)) - 0.0018213545629837198), loss = 2.03210573233427e-6, score = 0.000203210573233427)
+    .exists[29] = true
+    .members[29] = PopMember(tree = ((x1 * (sin((x1 * 1.3691025910397163) / (((sin(x1) + 0.031060257639322186) / ((x1 - 0.08353456065126356) / sin(exp(0.3562620714480004 / x1)))) + exp(exp(x1)))) + -0.023434283761930342)) - 0.0018002539115828102), loss = 2.029328409273302e-6, score = 0.00020293284092733023)
+    .exists[30] = true
+    .members[30] = PopMember(tree = ((sin(sin((x1 * 1.3697878221150286) / (exp(exp(x1)) + ((sin(x1) + 0.030704526604400113) / ((x1 - 0.08403097143530248) / sin(exp(0.3562578462421664 / x1)))))) + -0.023419918920043224) * x1) - 0.0017847708255521594), loss = 2.0270920657498105e-6, score = 0.00020270920657498105)
+</code></pre><p>Next, we extract the 10 model structures which symbolic regression thinks are best, and predict the system with them.</p><pre><code class="language-julia hljs">n_best = 10
+function get_model_structures(hall_of_fame, options, n_best)
+    best_models = []
+    best_models_scores = []
+    i = 1
+    round(hall_of_fame.members[i].loss,sigdigits=5)
+    while length(best_models) &lt;= n_best
+        member = hall_of_fame.members[i]
+        rounded_score = round(member.loss, sigdigits=5)
+        if !(rounded_score in best_models_scores)
+            push!(best_models,member)
+            push!(best_models_scores, rounded_score)
+        end
+        i += 1
+    end
+    model_structures = []
+    @syms x
+    for i = 1:n_best
+        eqn = node_to_symbolic(best_models[i].tree, options, varMap=[&quot;x&quot;])
+        fi = build_function(eqn, x, expression=Val{false})
+        push!(model_structures, fi)
+    end
+    return model_structures
+end
+
+function get_probs_and_caches(model_structures)
+    probs_plausible = Array{Any}(undef, length(model_structures))
+    syms_cache = Array{Any}(undef, length(model_structures))
+    i = 1
+    for i in 1:length(model_structures)
+        @mtkmodel PlausibleBioreactor begin
+            @extend Bioreactor()
+            @equations begin
+                μ ~ model_structures[i](C_s)
+            end
+        end
+        @mtkbuild plausible_bioreactor = PlausibleBioreactor()
+        plausible_prob = ODEProblem(plausible_bioreactor, [], (0.0, 15.0), [], tstops=0:15, saveat=0:15)
+        probs_plausible[i] = plausible_prob
+
+        callback_controls = plausible_bioreactor.controls
+        initial_control = plausible_bioreactor.Q_in
+
+        syms_cache[i] = (callback_controls, initial_control, plausible_bioreactor.C_s)
+    end
+    probs_plausible, syms_cache
+end
+model_structures = get_model_structures(hall_of_fame, options, n_best)
+probs_plausible, syms_cache = get_probs_and_caches(model_structures)
+
+plts = plot(), plot(), plot(), plot()
+for i in 1:length(model_structures)
+    plot!(plts[4],  C_s_range_plot, model_structures[i].( C_s_range_plot);c=i+2,lw=1,ls=:dash)
+    plausible_prob = probs_plausible[i]
+    sol_plausible = solve(plausible_prob, Rodas5P())
+    # plot!(sol_plausible; label=[&quot;Cₛ(g/L)&quot; &quot;Cₓ(g/L)&quot; &quot;V(L)&quot;], xlabel=&quot;t(h)&quot;, lw=3)
+    plot!(plts[1], sol_plausible, idxs=:C_s, lw=1,ls=:dash,c=i+2)
+    plot!(plts[2], sol_plausible, idxs=:C_x, lw=1,ls=:dash,c=i+2)
+end
+plot!(plts[1], sol, idxs=:C_s, lw=3,c=1)
+plot!(plts[1], res_sol, idxs=:C_s, lw=3,c=2)
+plot!(plts[1], ylabel=&quot;Cₛ(g/L)&quot;, xlabel=&quot;t(h)&quot;)
+scatter!(plts[1], data[!, &quot;timestamp&quot;], data[!, &quot;C_s(t)&quot;]; ms=3,c=1)
+plot!(plts[2], sol, idxs=:C_x, lw=3,c=1)
+plot!(plts[2], res_sol, idxs=:C_x, lw=3,c=2)
+plot!(plts[2], ylabel=&quot;Cₓ(g/L)&quot;, xlabel=&quot;t(h)&quot;)
+plot!(plts[3], sol, idxs=:V, ylabel=&quot;V(L)&quot;, xlabel=&quot;t(h)&quot;, lw=3, color=:black, ylims=(6.0,8.0))
+μ_max = 0.421; K_s = 0.439*10 # TODO extract the  values from the model.
+plot!(plts[4], C_s_range_plot, μ_max .* C_s_range_plot ./ (K_s .+ C_s_range_plot), lw=3, c=1)
+plot!(plts[4], C_s_range_plot, μ_predicted_plot, lw=3, c=2)
+scatter!(plts[4], data[!, &quot;C_s(t)&quot;], μ_predicted_data, ms=3, c=2)
+plot!(plts[4], ylabel=&quot;μ(1/h)&quot;, xlabel=&quot;Cₛ(g/L)&quot;,ylims=(0,0.5))
+plot(plts..., layout = 4, tickfontsize=10, guidefontsize=12, legendfontsize=14, grid=false, legend=false)</code></pre><img src="f269471c.svg" alt="Example block output"/><p>On the figure we see that most plausible model structures predict the states <span>$C_s$</span> and <span>$C_x$</span> well, similar to the neural network. The plausible model structures also fit <span>$\mu$</span> well in the low <span>$C_s$</span> region, but not outside this region. One group of the structures predicts that <span>$\mu$</span> keeps increasing as <span>$C_s$</span> becomes large while another group predicts that <span>$\mu$</span> stays below <span>$0.1$</span> <span>$1/\mathrm{h}$</span>.</p><p>We now design a second experiment to start discriminating between these plausible model structures, using the following criterion:</p><p class="math-container">\[\begin{equation*}
+\argmax_{\bm u} \frac{2!(10-2)!}{10!}\sum_{i=1}^10 \sum_{j=i+1}^{10} \max_{t_k} (\bm C_s^i(t_k) - h(\bm C_s^j(t_k)))^2.
+\end{equation*}\]</p><p>In this equation, <span>$C_s^i$</span> denotes the predicted substrate concentration for the i&#39;th plausible model structure. The distance between two model structures is scored by the maximal squared difference between the two structures at the measurement times. The criterion then calculates the average distance between all model structures. Collecting measurements where the plausible model structures differ greatly in predictions, will cause at least some of the model structures to become unlikely, and thus cause new model structures to enter the top 10 plausible model structures.</p><pre><code class="language-julia hljs">function S_criterion(optimization_state, (probs_plausible, syms_cache))
+    n_structures = length(probs_plausible)
+    sols = Array{Any}(undef, n_structures)
+    for i in 1:n_structures
+        plausible_prob = probs_plausible[i]
+        callback_controls, initial_control, C_s = syms_cache[i]
+        plausible_prob.ps[callback_controls] = optimization_state[2:end]
+        plausible_prob.ps[initial_control] = optimization_state[1]
+        sol_plausible = solve(plausible_prob, Rodas5P())
+        if !(SciMLBase.successful_retcode(sol_plausible))
+            return 0.0
+        end
+    loss
+        sols[i] = sol_plausible
+    end
+    squared_differences = Float64[]
+    for i in 1:n_structures
+        callback_controls, initial_control, C_s = syms_cache[i]
+        for j in i+1:n_structures
+            push!(squared_differences, maximum((sols[i][C_s] .- sols[j][C_s]) .^ 2))
+        end
+    end
+    ret = -mean(squared_differences)
+    println(ret)
+    return ret
+end
+lb = zeros(15)
+ub = 10 * ones(15)
+
+design_prob = OptimizationProblem(S_criterion, optimization_state, (probs_plausible, syms_cache), lb=lb, ub=ub)
+control_pars_opt = solve(design_prob, BBO_adaptive_de_rand_1_bin_radiuslimited(), maxtime=100.0)
+
+optimization_state = control_pars_opt.u
+optimization_initial = optimization_initial2 = optimization_state[1]
+
+plts = plot(), plot()
+t_pwc = []
+pwc = []
+for i in 0:14
+    push!(t_pwc,i)
+    push!(t_pwc,i+1)
+    push!(pwc,optimization_state[i+1])
+    push!(pwc,optimization_state[i+1])
+end
+plot!(plts[1], t_pwc, pwc, lw=3, color=:black,xlabel=&quot;t(h)&quot;,ylabel=&quot;Qin(L/h)&quot;)
+for i in 1:length(model_structures)
+    plausible_prob = probs_plausible[i]
+    callback_controls, initial_control, C_s = syms_cache[i]
+    plausible_prob.ps[callback_controls] = control_pars_opt[2:end]
+    plausible_prob.ps[initial_control] = control_pars_opt[1]
+    sol_plausible = solve(plausible_prob, Rodas5P())
+    plot!(plts[2], sol_plausible, idxs=:C_s, lw=3,ls=:dash,c=i+2)
+end
+plot!(plts[2],xlabel=&quot;t(h)&quot;,ylabel=&quot;Cₛ(g/L)&quot;)
+plot(plts..., layout = (2, 1), tickfontsize=12, guidefontsize=14, legendfontsize=14, grid=false, legend=false)</code></pre><img src="43652090.svg" alt="Example block output"/><p>The above figure shows that a maximal control action is preferred. This causes the two aforementioned groups in the model structures to be easily discriminated from one another.</p><p>We now gather a second dataset and perform the same exercise.</p><pre><code class="language-julia hljs">@mtkbuild true_bioreactor2 = TrueBioreactor()
+prob2 = ODEProblem(true_bioreactor2, [], (0.0, 15.0), [], tstops=0:15, save_everystep=false)
+sol2 = solve(prob2, Rodas5P())
+@mtkbuild ude_bioreactor2 = UDEBioreactor()
+ude_prob2 = ODEProblem(ude_bioreactor2, [], (0.0, 15.0), [ude_bioreactor2.Q_in =&gt; optimization_initial], tstops=0:15, save_everystep=false)
+ude_sol2 = solve(ude_prob2, Rodas5P())
+plot(ude_sol2[3,:])
+ude_prob_remake = remake(ude_prob, p=ude_prob2.p)
+sol_remake = solve(ude_prob_remake, Rodas5P())
+plot(sol_remake[3,:])
+x0 = reduce(vcat, getindex.((default_values(ude_bioreactor),), tunable_parameters(ude_bioreactor)))
+
+get_vars2 = getu(ude_bioreactor2, [ude_bioreactor2.C_s])
+
+data2 = DataFrame(sol2)
+data2 = data2[1:2:end, :]
+data2[!, &quot;C_s(t)&quot;] += sd_cs * randn(size(data2, 1))
+
+ps = ([ude_prob, ude_prob2], [get_vars, get_vars2], [data, data2]);
+op = OptimizationProblem(of, x0, ps)
+res = solve(op, NLopt.LN_BOBYQA, maxiters=5_000)
+
+new_p = SciMLStructures.replace(Tunable(), ude_prob2.p, res.u)
+res_prob = remake(ude_prob2, p=new_p)
+callback_controls, initial_control, C_s = syms_cache[1]
+res_prob.ps[initial_control] = optimization_initial2
+res_sol = solve(res_prob, Rodas5P())
+extracted_chain = arguments(equations(ude_bioreactor2.nn)[1].rhs)[1]
+T = defaults(ude_bioreactor2)[ude_bioreactor2.nn.T]
+μ_predicted_plot2 = [only(stateless_apply(extracted_chain, [C_s], convert(T,res.u))) for C_s in C_s_range_plot]
+
+μ_predicted_data = [only(stateless_apply(extracted_chain, [C_s], convert(T,res.u))) for C_s in data[!, &quot;C_s(t)&quot;]]
+μ_predicted_data2 = [only(stateless_apply(extracted_chain, [C_s], convert(T,res.u))) for C_s in data2[!, &quot;C_s(t)&quot;]]
+
+total_data = hcat(collect(data[!, &quot;C_s(t)&quot;]&#39;), collect(data2[!, &quot;C_s(t)&quot;]&#39;))
+total_predicted_data =  vcat(μ_predicted_data, μ_predicted_data2)
+hall_of_fame = equation_search(total_data, total_predicted_data; options, niterations=1000, runtests=false, parallelism=:serial)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">HallOfFame{...}:
+    .exists[1] = true
+    .members[1] = PopMember(tree = (0.19708511032577197), loss = 0.028391808377961965, score = 0.42228130058513014)
+    .exists[2] = true
+    .members[2] = PopMember(tree = (sin(0.19839035326400886)), loss = 0.028391808418957935, score = 0.42228130119487756)
+    .exists[3] = true
+    .members[3] = PopMember(tree = (x1 * 0.009296917346574483), loss = 0.0015351410404411132, score = 0.022832689855792024)
+    .exists[4] = true
+    .members[4] = PopMember(tree = (sin(x1 * 0.009557088846144405)), loss = 0.0014635050056619773, score = 0.02176722204435188)
+    .exists[5] = true
+    .members[5] = PopMember(tree = ((x1 * 0.008325986296347072) + 0.038827765894663496), loss = 0.0007441162179479577, score = 0.011067500883299062)
+    .exists[6] = true
+    .members[6] = PopMember(tree = (exp(-1.648870477837287 / x1) * 0.3920958245939909), loss = 0.00030492144843762903, score = 0.004535203397698705)
+    .exists[7] = true
+    .members[7] = PopMember(tree = ((x1 * 0.426410962485856) / (x1 - -5.28419323656277)), loss = 7.7857575865149e-5, score = 0.0011580029689923052)
+    .exists[8] = true
+    .members[8] = PopMember(tree = ((exp(-2.495048355206404 / x1) * 0.3671911400099039) + 0.031597263145994856), loss = 5.532066844344928e-6, score = 8.22803659018476e-5)
+    .exists[9] = true
+    .members[9] = PopMember(tree = ((exp(-6.49857445249848 / exp(x1)) * 0.34718961631471373) + 0.02910192427967693), loss = 2.2086036464408836e-7, score = 3.284933484617528e-6)
+    .exists[10] = true
+    .members[10] = PopMember(tree = ((exp(exp(-5.183072554814766 / exp(x1))) * 0.2029721468591942) + -0.17544205954600736), loss = 2.1141953325787023e-8, score = 3.1445166959683194e-7)
+    .exists[11] = true
+    .members[11] = PopMember(tree = ((exp(-7.709345738087925 / (exp(x1) + 0.6139698213782036)) * 0.35119672802613944) + 0.025097038388360523), loss = 1.7745596533008078e-9, score = 2.6393646659838223e-8)
+    .exists[12] = true
+    .members[12] = PopMember(tree = ((sin(exp(-8.802594278666502 / (exp(x1) + 0.8543819546263851))) * 0.41827863051892517) + 0.024324732625917812), loss = 7.603660866141412e-10, score = 1.1309190865963917e-8)
+    .exists[13] = true
+    .members[13] = PopMember(tree = ((sin(exp(-8.8025993935483 / (exp(x1) + 0.8543871496687946))) * 0.41827869236392506) + sin(0.024324674419186648)), loss = 7.661199059256039e-10, score = 1.1394769433902627e-8)
+    .exists[14] = true
+    .members[14] = PopMember(tree = (((sin(exp(-8.802577978013616 / (exp(x1) + 0.8544358881863922))) * 0.4155231851949957) + 0.024163392686978154) / 0.9934095189738869), loss = 7.604209416329388e-10, score = 1.1310006743852817e-8)
+    .exists[15] = true
+    .members[15] = PopMember(tree = ((exp(-6.774959773814544 / (((x1 + -1.908850820048358) / -3.0097771821599957) + exp(x1))) * 0.3539707067278957) + 0.022323351152494553), loss = 5.982038213723391e-10, score = 8.897294752812756e-9)
+    .exists[16] = true
+    .members[16] = PopMember(tree = ((exp(-6.774959760945326 / (((x1 + -1.9088508337687213) / -3.009777174934944) + exp(x1))) * 0.35397070682974585) + sin(0.022323351013755745)), loss = 6.016412388054112e-10, score = 8.948420665081818e-9)
+    .exists[17] = true
+    .members[17] = PopMember(tree = ((exp(-5.837478444221572 / (((x1 + -1.6751582066636947) / -2.914880637374999) + exp(x1 + -0.12716515940684))) * 0.3547994059545832) + 0.021494642400777607), loss = 5.244493714663169e-10, score = 7.800319011935642e-9)
+    .exists[18] = true
+    .members[18] = PopMember(tree = ((exp(-6.312675718351794 / (((x1 + (-0.6766071986589217 - cos(x1))) * -0.25221239415026775) + exp(x1))) * 0.35258166790577167) + 0.023712395508205617), loss = 3.5931822712453736e-10, score = 5.344265721089818e-9)
+    .exists[19] = true
+    .members[19] = PopMember(tree = ((exp(-6.3114299128624305 / (exp(x1) + ((sin(x1 + -0.6421617941453819) - cos(x1)) * -0.2502180558908396))) * 0.3523340789305626) + 0.023959977041101543), loss = 1.8338902608018032e-10, score = 2.7276091545577648e-9)
+    .exists[20] = true
+    .members[20] = PopMember(tree = ((exp(-6.3114299128624305 / (exp(x1) + ((sin(x1 + -0.6421617941453819) - cos(x1)) * -0.2502180558908396))) * 0.3523340789305626) + sin(0.023959977041101543)), loss = 1.8864392243465204e-10, score = 2.805767066778982e-9)
+    .exists[21] = true
+    .members[21] = PopMember(tree = ((exp(-6.359433816813124 / (exp(x1) + (((x1 + -0.649918773284952) - cos(sin(x1 + -0.07623711771918924))) * -0.2982832521821609))) * 0.35346739298286456) + 0.022826652271788508), loss = 1.531407771228554e-10, score = 2.277716363648513e-9)
+    .exists[22] = true
+    .members[22] = PopMember(tree = ((0.3535042484765592 * exp(-6.360018907225692 / (exp(x1) + (-0.299050696392995 * ((x1 + -0.65336055949556) - cos(sin(x1 + sin(-0.07613164632692765)))))))) + 0.022789801482388843), loss = 1.5336604985351354e-10, score = 2.281066923796789e-9)
+    .exists[23] = true
+    .members[23] = PopMember(tree = ((exp(-6.3772278634869695 / ((((x1 + -0.9238510121399635) - cos(sin(1.0458802641849285 * x1))) / -3.9727214436210745) + exp(x1 * 0.9859207015724539))) * 0.35329301523078305) + 0.023001034619926655), loss = 1.5298486256025967e-10, score = 2.275397391802951e-9)
+    .exists[24] = true
+    .members[24] = PopMember(tree = (0.022788609117611314 + (0.35350469877408164 * exp(-6.360007561017571 / (((-0.6533708836234912 + (x1 - cos(sin(0.9233836058623434 + (x1 - cos(0.022788609117611314)))))) * -0.29908505619176096) + exp(x1))))), loss = 1.5376750065779791e-10, score = 2.2870378420805903e-9)
+    .exists[25] = true
+    .members[25] = PopMember(tree = ((exp(-6.377243834192017 / (exp(x1 * 0.9857982390563945) + ((x1 + (-0.923844221250589 - cos(sin(x1 - (x1 * -0.0428866619379135))))) / -3.972720636208253))) * 0.3532933631184099) + 0.023000686730245554), loss = 1.5272570426646243e-10, score = 2.2715428398172076e-9)
+    .exists[26] = true
+    .members[26] = PopMember(tree = ((exp(-6.377243834135889 / (((x1 + (-0.9238442214245748 - cos(sin((x1 * sin(-0.042886662042300294)) - x1)))) / -3.9727206361052887) + exp(x1 * 0.9857982370382452))) * 0.35329337329283517) + 0.023000671405901472), loss = 1.5272600609946333e-10, score = 2.2715473290850447e-9)
+    .exists[27] = true
+    .members[27] = PopMember(tree = ((exp(-6.37722389032734 / (exp(x1 * 0.9859606345750512) + (((x1 + -0.9186135918302873) - cos(sin(((0.1320067174524839 - x1) * -0.04536400782695809) + x1))) / -3.9727218986993647))) * 0.3532762871941315) + 0.02301776294954631), loss = 1.520767035899313e-10, score = 2.261890025663287e-9)
+    .exists[28] = true
+    .members[28] = PopMember(tree = ((exp(-6.37722389032734 / (exp(x1 * 0.9859606345750512) + (((x1 + -0.9186135918302873) - cos(sin(((sin(0.1320067174524839) - x1) * -0.04536400782695809) + x1))) / -3.9727218986993647))) * 0.3532762871941315) + 0.02301776294954631), loss = 1.5207791189208624e-10, score = 2.2619079971640347e-9)
+    .exists[29] = true
+    .members[29] = PopMember(tree = ((exp(-6.377672909533269 / (exp(x1) + ((x1 + (-0.9203947549695803 - sin(cos((sin(x1 * (x1 + 0.39856280826197316)) * -0.2695933309055036) - sin(x1))))) / -3.9728388074411822))) * 0.3526838930496361) + 0.02361016836042715), loss = 1.2743177670209238e-10, score = 1.8953374045523275e-9)
+    .exists[30] = true
+    .members[30] = PopMember(tree = ((exp(-6.377672913206818 / (((x1 + (-0.9203947543639504 - sin(cos((sin((x1 + sin(0.40994927670749004)) * x1) * -0.26959333518332024) - sin(x1))))) / -3.972838806622446) + exp(x1))) * 0.3526839375233677) + 0.02361012281181735), loss = 1.274327917235035e-10, score = 1.8953525013209413e-9)
+</code></pre><pre><code class="language-julia hljs">model_structures = get_model_structures(hall_of_fame, options, n_best)
+probs_plausible, syms_cache = get_probs_and_caches(model_structures);
+
+plts = plot(), plot(), plot(), plot()
+for i in 1:length(model_structures)
+    plot!(plts[4],  C_s_range_plot, model_structures[i].( C_s_range_plot);c=i+2,lw=1,ls=:dash)
+    plausible_prob = probs_plausible[i]
+    sol_plausible = solve(plausible_prob, Rodas5P())
+    # plot!(sol_plausible; label=[&quot;Cₛ(g/L)&quot; &quot;Cₓ(g/L)&quot; &quot;V(L)&quot;], xlabel=&quot;t(h)&quot;, lw=3)
+    plot!(plts[1], sol_plausible, idxs=:C_s, lw=1,ls=:dash,c=i+2)
+    plot!(plts[2], sol_plausible, idxs=:C_x, lw=1,ls=:dash,c=i+2)
+end
+plot!(plts[1], sol2, idxs=:C_s, lw=3,c=1)
+plot!(plts[1], res_sol, idxs=:C_s, lw=3,c=2)
+plot!(plts[1], ylabel=&quot;Cₛ(g/L)&quot;, xlabel=&quot;t(h)&quot;)
+scatter!(plts[1], data2[!, &quot;timestamp&quot;], data2[!, &quot;C_s(t)&quot;]; ms=3,c=1)
+plot!(plts[2], sol2, idxs=:C_x, lw=3,c=1)
+plot!(plts[2], res_sol, idxs=:C_x, lw=3,c=2)
+plot!(plts[2], ylabel=&quot;Cₓ(g/L)&quot;, xlabel=&quot;t(h)&quot;)
+plot!(plts[3], sol2, idxs=:V, ylabel=&quot;V(L)&quot;, xlabel=&quot;t(h)&quot;, lw=3, color=:black)
+plot!(plts[4], C_s_range_plot, μ_max .* C_s_range_plot ./ (K_s .+ C_s_range_plot), lw=3, c=1)
+plot!(plts[4], C_s_range_plot, μ_predicted_plot2, lw=3, c=2)
+scatter!(plts[4], data[!, &quot;C_s(t)&quot;], μ_predicted_data, ms=3, c=2)
+scatter!(plts[4], data2[!, &quot;C_s(t)&quot;], μ_predicted_data2, ms=3, c=2)
+plot!(plts[4], ylabel=&quot;μ(1/h)&quot;, xlabel=&quot;Cₛ(g/L)&quot;,ylims=(0,0.5))
+plot(plts..., layout = 4, tickfontsize=10, guidefontsize=12, legendfontsize=14, grid=false, legend=false)</code></pre><img src="56a5e263.svg" alt="Example block output"/><p>The above shows the data analysis corresponding to this second experiment. Both the UDE and most of the plausible model structures predict the states well,</p><p>The UDE and the plausible model structures also approximate the missing physics <span>$\mu$</span> well in the region where we have gathered data. This means in the regions of low substrate concentration, with data coming primarily from the first experiment, and high substrate concentration, coming from the second experiment However, we do not have any measurements at substrate concentrations between these two groups. This causes there to be substantial disagreement between the plausible model structures in the medium substrate concentration range. One of the plausible model structures is the Monod equation, with reasonably accurate parameter values: <span>$\nicefrac{C_s}{(C_s - (-5.4499))}*0.42887$</span>. Symbolic regression sometimes finds the true model structure in a somewhat unusual form, like with a double negative sign. This is because symbolic regression considers addition and subtraction to have the same complexity, as well as positive and negative numbers.</p><p>We now optimize the controls for a third experiment:</p><pre><code class="language-julia hljs">prob = OptimizationProblem(S_criterion, zeros(15), (probs_plausible, syms_cache), lb=lb, ub=ub)
+control_pars_opt = solve(prob, BBO_adaptive_de_rand_1_bin_radiuslimited(), maxtime=60.0)
+
+optimization_state = control_pars_opt.u
+optimization_initial = optimization_state[1]
+
+plts = plot(), plot()
+t_pwc = []
+pwc = []
+for i in 0:14
+    push!(t_pwc,i)
+    push!(t_pwc,i+1)
+    push!(pwc,optimization_state[i+1])
+    push!(pwc,optimization_state[i+1])
+end
+plot!(plts[1], t_pwc, pwc, lw=3, color=:black,xlabel=&quot;t(h)&quot;,ylabel=&quot;Qin(L/h)&quot;)
+for i in 1:length(model_structures)
+    plausible_prob = probs_plausible[i]
+    callback_controls, initial_control, C_s = syms_cache[i]
+    plausible_prob.ps[callback_controls] = control_pars_opt[2:end]
+    plausible_prob.ps[initial_control] = control_pars_opt[1]
+    sol_plausible = solve(plausible_prob, Rodas5P())
+    plot!(plts[2], sol_plausible, idxs=:C_s, lw=3,ls=:dash,c=i+2)
+end
+plot!(plts[2],xlabel=&quot;t(h)&quot;,ylabel=&quot;Cₛ(g/L)&quot;)
+plot(plts..., layout = (2, 1), tickfontsize=12, guidefontsize=14, legendfontsize=14, grid=false, legend=false)</code></pre><img src="17402890.svg" alt="Example block output"/><p>The optimal design algorithm is also aware of this uncertainty at the medium concentration range, and aims to remedy this in the next experiment, as can be seen on the above figure. Using the first control action, the bioreactor substrate concentration gets pumped from a low substrate concentration level to a medium level. At this level, there is substantial disagreement between the plausible model structures, leading to substantial disagreement in predicted substrate concentrations. To keep the reactor at the medium substrate concentration range, while the biomass concentration increases rapidly, an increasing amount of substrate has to be pumped into the reactor every hour. This explains the staircase with increasing step heights form of the control function. After the staircase reaches the maximal control value, a zero control is used. Some model structures decrease more rapidly in substrate concentration than others.</p><pre><code class="language-julia hljs">@mtkbuild true_bioreactor3 = TrueBioreactor()
+prob3 = ODEProblem(true_bioreactor3, [], (0.0, 15.0), [], tstops=0:15, save_everystep=false)
+sol3 = solve(prob3, Rodas5P())
+@mtkbuild ude_bioreactor3 = UDEBioreactor()
+ude_prob3 = ODEProblem(ude_bioreactor3, [], (0.0, 15.0), tstops=0:15, save_everystep=false)
+
+x0 = reduce(vcat, getindex.((default_values(ude_bioreactor3),), tunable_parameters(ude_bioreactor3)))
+
+get_vars3 = getu(ude_bioreactor3, [ude_bioreactor3.C_s])
+
+data3 = DataFrame(sol3)
+data3 = data3[1:2:end, :]
+data3[!, &quot;C_s(t)&quot;] += sd_cs * randn(size(data3, 1))
+
+ps = ([ude_prob, ude_prob2, ude_prob3], [get_vars, get_vars2, get_vars3], [data, data2, data3]);
+op = OptimizationProblem(of, x0, ps)
+res = solve(op, Optimization.LBFGS(), maxiters=10_000)
+extracted_chain = arguments(equations(ude_bioreactor3.nn)[1].rhs)[1]
+T = defaults(ude_bioreactor3)[ude_bioreactor3.nn.T]
+
+μ_predicted_data = [only(stateless_apply(extracted_chain, [C_s], convert(T,res.u))) for C_s in data[!, &quot;C_s(t)&quot;]]
+μ_predicted_data2 = [only(stateless_apply(extracted_chain, [C_s], convert(T,res.u))) for C_s in data2[!, &quot;C_s(t)&quot;]]
+μ_predicted_data3 = [only(stateless_apply(extracted_chain, [C_s], convert(T,res.u))) for C_s in data3[!, &quot;C_s(t)&quot;]]
+
+total_data = hcat(collect(data[!, &quot;C_s(t)&quot;]&#39;), collect(data2[!, &quot;C_s(t)&quot;]&#39;), collect(data3[!, &quot;C_s(t)&quot;]&#39;))
+total_predicted_data =  vcat(μ_predicted_data, μ_predicted_data2, μ_predicted_data3)
+hall_of_fame = equation_search(total_data, total_predicted_data; options, niterations=1000, runtests=false, parallelism=:serial)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">HallOfFame{...}:
+    .exists[1] = true
+    .members[1] = PopMember(tree = (0.2352295472782257), loss = 0.023526850575903046, score = 0.29833772610270143)
+    .exists[2] = true
+    .members[2] = PopMember(tree = (sin(0.23745658119561955)), loss = 0.023526850579120396, score = 0.2983377261434998)
+    .exists[3] = true
+    .members[3] = PopMember(tree = (x1 * 0.010790340799971111), loss = 0.00980696339735567, score = 0.12435949089319243)
+    .exists[4] = true
+    .members[4] = PopMember(tree = (sin(x1 * 0.011276831539065415)), loss = 0.009271259791132566, score = 0.11756637613990237)
+    .exists[5] = true
+    .members[5] = PopMember(tree = (x1 / (x1 + 50.42156439877323)), loss = 0.004668043632070574, score = 0.05919421802961297)
+    .exists[6] = true
+    .members[6] = PopMember(tree = (exp(-1.4825698968857774 / x1) * 0.3774172177219026), loss = 0.00023658739342104112, score = 0.0030001017242015362)
+    .exists[7] = true
+    .members[7] = PopMember(tree = ((-1.7043673677696918 / (x1 + 4.0401559548862425)) + 0.41605030115341063), loss = 7.749949254397004e-6, score = 9.827504240351905e-5)
+    .exists[8] = true
+    .members[8] = PopMember(tree = ((-1.7043673677696918 / (x1 + exp(1.3965850507445323))) + 0.41605030115341063), loss = 7.753886945638311e-6, score = 9.832497521740062e-5)
+    .exists[9] = true
+    .members[9] = PopMember(tree = (((x1 / (x1 + 4.04015580711552)) * 0.4218568263618378) + -0.005806527074061265), loss = 7.749949254396348e-6, score = 9.827504240351073e-5)
+    .exists[10] = true
+    .members[10] = PopMember(tree = (((x1 / (x1 + 4.040157810785112)) * 0.42185681326175534) + sin(-0.005806503648307111)), loss = 7.749949255159687e-6, score = 9.827504241319044e-5)
+    .exists[11] = true
+    .members[11] = PopMember(tree = (((0.0004030704582785295 - (-0.4045209330269703 / (x1 + 3.451321991133269))) * x1) - 0.010101990631287874), loss = 4.333724666122816e-6, score = 5.495480826364892e-5)
+    .exists[12] = true
+    .members[12] = PopMember(tree = ((exp(-1.2590609720148995 / x1) + (x1 * 0.4241803578581498)) / (x1 + 7.410467730226156)), loss = 2.9772167440478068e-6, score = 3.7753292590885516e-5)
+    .exists[13] = true
+    .members[13] = PopMember(tree = (((x1 * 0.4240044584295104) + sin(exp(-1.372451524845782 / x1))) / (x1 + 7.0066181563746985)), loss = 2.7197378941533905e-6, score = 3.448827187129477e-5)
+    .exists[14] = true
+    .members[14] = PopMember(tree = ((((x1 * 0.42215181386620765) + exp(-1.3199230001713782 / x1)) / (x1 + 7.458382996142565)) - -0.002149917605600206), loss = 2.3394101665898596e-6, score = 2.966543725307659e-5)
+    .exists[15] = true
+    .members[15] = PopMember(tree = (((sin(exp(-1.421628596884154 / x1)) + (x1 * 0.4224958770849612)) / (x1 + 7.053432463823801)) + 0.001714887850578679), loss = 2.300338369920745e-6, score = 2.916997820574665e-5)
+    .exists[16] = true
+    .members[16] = PopMember(tree = ((exp((-1.471325855028875 / x1) - (x1 * 0.03693307799497251)) + (x1 * 0.4375767651895986)) / (x1 + 6.824432865275124)), loss = 2.0767539283092673e-6, score = 2.633476345028633e-5)
+    .exists[17] = true
+    .members[17] = PopMember(tree = (sin((exp((-1.557370371489021 / x1) - (x1 * 0.0490162550584485)) + (x1 * 0.45003249528660444)) / (x1 + 6.7254247954645905))), loss = 1.9575148116326433e-6, score = 2.4822723969394898e-5)
+    .exists[18] = true
+    .members[18] = PopMember(tree = ((((x1 * (0.3963195191354119 - (x1 * -0.00044259564409410563))) + exp(-1.501311185024296 / x1)) / (x1 + 6.5209028953312504)) + 0.001736560671926705), loss = 1.7719114643612155e-6, score = 2.2469137355523085e-5)
+    .exists[19] = true
+    .members[19] = PopMember(tree = ((exp(-1.2077308025347657 / x1) + (x1 * (0.4244302583152289 - (cos(x1 * 0.20290941584898733) * 0.0037848956692140426)))) / (x1 + 7.556028608755514)), loss = 1.3435325629625012e-6, score = 1.7036978599664608e-5)
+    .exists[20] = true
+    .members[20] = PopMember(tree = ((((0.42447578308156153 - (cos(x1 * 0.20268371079011654) * sin(0.003798174916864625))) * x1) + exp(-1.200951472298868 / x1)) / (x1 + 7.557711499956269)), loss = 1.3542507855168385e-6, score = 1.7172893525226246e-5)
+    .exists[21] = true
+    .members[21] = PopMember(tree = (((((0.4225644019290767 - (cos(x1 * 0.20954111413165197) * 0.0034814515881000435)) * x1) + exp(-1.3051044600365034 / x1)) + 0.016658879727582922) / (x1 + 7.467336498583073)), loss = 6.391777659293997e-7, score = 8.105243013618385e-6)
+    .exists[22] = true
+    .members[22] = PopMember(tree = ((exp(-1.3072753510235116 / x1) + ((0.4224579390267843 - (cos(x1 * 0.2098960730683311) * 0.003454358582591576)) * (x1 + exp(-3.179828091630315)))) / (x1 + 7.458784246518816)), loss = 6.565101319212382e-7, score = 8.325030130525613e-6)
+    .exists[23] = true
+    .members[23] = PopMember(tree = (((((0.42200739286299177 - (cos((x1 * 0.23676932632588754) + -0.8414343724053864) * 0.003776655435092656)) * x1) + exp(-1.3101835786095728 / x1)) + 0.016819211822615917) / (x1 + 7.443168608080881)), loss = 5.05259963715333e-7, score = 6.407067030890937e-6)
+    .exists[24] = true
+    .members[24] = PopMember(tree = ((exp(-1.3102546890453517 / x1) + (0.016806618474601225 + ((0.4220044575149562 - (cos((x1 * 0.23713256625718293) + -0.8414203589842809) * sin(0.0037820275277622587))) * x1))) / (x1 + 7.443232788466345)), loss = 5.055706390167748e-7, score = 6.4110066216444645e-6)
+    .exists[25] = true
+    .members[25] = PopMember(tree = ((exp(-1.3209735197252535 / x1) + ((x1 * (0.4222375891295674 - (cos((4.251256822891388 / x1) - (x1 * 0.213860960381884)) * 0.003780085980255474))) + 0.016342616942091256)) / (x1 + 7.452568153574182)), loss = 4.385435561523769e-7, score = 5.561054035574865e-6)
+    .exists[26] = true
+    .members[26] = PopMember(tree = (((exp(-1.3213979450006337 / x1) + 0.01638947229614077) + ((0.4222409524966345 - sin(cos((x1 * 0.21362435896635645) - (4.251200638913364 / x1)) * 0.0037740669239852346)) * x1)) / (x1 + 7.451869569727413)), loss = 4.391256216340491e-7, score = 5.568435052922883e-6)
+    .exists[27] = true
+    .members[27] = PopMember(tree = ((((0.42190297176167885 - (cos(((1.2932772733612818 / x1) / 0.13627925925218554) - (x1 * 0.2208877268674393)) * 0.0038727266273395114)) * x1) + (0.016660977007585634 + exp(-1.327908646296246 / x1))) / (x1 + 7.4297680095062315)), loss = 3.5235335540252715e-7, score = 4.468099055430502e-6)
+    .exists[28] = true
+    .members[28] = PopMember(tree = (((((0.4202350142776053 - (cos(x1 * (0.20917789167990272 - (x1 / (exp(x1) * 0.0009145231846442093)))) * 0.0037332413960914712)) * x1) + exp(-1.3246280117450657 / x1)) / (x1 + 7.442174799069176)) + 0.002231460847357203), loss = 2.5071208476923434e-7, score = 3.179213173272348e-6)
+    .exists[29] = true
+    .members[29] = PopMember(tree = (((((0.4202350142776053 - (cos((0.20917789167990272 - ((x1 / exp(x1)) / sin(0.0009145233121215729))) * x1) * 0.0037332413960914712)) * x1) + exp(-1.3246280117450657 / x1)) / (x1 + 7.442174799069176)) + 0.002231460847357203), loss = 2.507120847692348e-7, score = 3.1792131732723544e-6)
+    .exists[30] = true
+    .members[30] = PopMember(tree = (((((0.4201775745084338 - (0.0037751759536074213 * cos((0.20922059176174154 - (((x1 - 0.6225442096058771) / exp(x1)) / 0.0009202813456164842)) * x1))) * x1) + exp(-1.324772899352567 / x1)) / (x1 + 7.441875251315)) + 0.0022504256828810775), loss = 2.1470796979094996e-7, score = 2.7226545804293587e-6)
+</code></pre><p>The Monod equation <span>$C_s / ((C_s - -4.631) / 0.42347)$</span> has a very high score, higher than all other model structures, indicating that it is a very good candidate for the true model structure.</p><p>In this tutorial, we have shown that experimental design can be used to explore the state space of a dynamic system in a thoughtful way, such that missing physics can be recovered in an efficient manner.</p></article><nav class="docs-footer"><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.8.0 on <span class="colophon-date" title="Thursday 12 December 2024 15:36">Thursday 12 December 2024</span>. Using Julia version 1.11.2.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
