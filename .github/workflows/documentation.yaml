@@ -24,13 +24,10 @@ jobs:
         run: |
           using Pkg
           Pkg.add("Documenter")
-          using Documenter
+          using Documenter          
+          include("./docs/docs.jl")
           Pkg.activate(".")
           Pkg.instantiate()
-          pwd()
-          cd("./docs")
-          pwd()
-          include("./docs.jl")
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           DOCUMENTER_KEY: ${{ secrets.DOCUMENTER_KEY }}
