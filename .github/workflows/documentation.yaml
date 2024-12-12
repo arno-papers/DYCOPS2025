@@ -20,14 +20,7 @@ jobs:
           version: '1'
       - uses: julia-actions/cache@v2
       - name: Build docs
-        shell: julia {0}
-        run: |
-          using Pkg
-          Pkg.add("Documenter")
-          using Documenter          
-          include("./docs/docs.jl")
-          Pkg.activate(".")
-          Pkg.instantiate()
+        run: julia docs/make.jl
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           DOCUMENTER_KEY: ${{ secrets.DOCUMENTER_KEY }}
