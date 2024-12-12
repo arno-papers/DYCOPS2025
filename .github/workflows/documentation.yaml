@@ -20,7 +20,7 @@ jobs:
           version: '1'
       - uses: julia-actions/cache@v2
       - name: Build docs
-        shell: julia
+        shell: julia {0}
         run: |
           using Pkg
           Pkg.add("Documenter")
