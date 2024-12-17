@@ -1,8 +1,7 @@
 using ModelingToolkit
 using ModelingToolkit: t_nounits as t, D_nounits as D
 using ModelingToolkitNeuralNets
-using ModelingToolkitStandardLibrary.Blocks
-using OrdinaryDiffEqTsit5, OrdinaryDiffEqNonlinearSolve, OrdinaryDiffEqRosenbrock
+using OrdinaryDiffEqRosenbrock
 using SymbolicIndexingInterface
 using Plots
 using Optimization, OptimizationOptimisers, OptimizationBBO, OptimizationNLopt
@@ -12,6 +11,7 @@ using SciMLSensitivity
 using Statistics
 using SymbolicRegression
 using LuxCore
+using LuxCore: stateless_apply
 using Lux
 using Statistics
 using DataFrames
@@ -87,6 +87,27 @@ end
 K_s = 0.439*10
 
 sd_cs = 0.1
+
+function loss(x, (probs, get_varss, datas))
+    loss = zero(eltype(x))
+    for i in eachindex(probs)
+        prob = probs[i]
+        get_vars = get_varss[i]
+        data = datas[i]
+        new_p = SciMLStructures.replace(Tunable(), prob.p, x)
+        new_prob = remake(prob, p=new_p, u0=eltype(x).(prob.u0))
+        new_sol = solve(new_prob, Rodas5P())
+        for (i, j) in enumerate(1:2:length(new_sol.t)) # HACK TO DEAL WITH DOUBLE SAVE
+            loss += sum(abs2.(get_vars(new_sol, j) .- data[!, "C_s(t)"][i]))
+        end
+        if !(SciMLBase.successful_retcode(new_sol))
+            println("failed")
+            return Inf
+        end
+    end
+    println(loss)
+    loss
+end
 
 options = SymbolicRegression.Options(
     unary_operators=(exp, sin, cos),
