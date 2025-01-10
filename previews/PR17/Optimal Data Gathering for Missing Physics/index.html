@@ -17,15 +17,7 @@ using LuxCore
 using LuxCore: stateless_apply
 using Lux
 using Statistics
-using DataFrames</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Precompiling UnitfulExt...
-   4056.2 ms  ✓ Qt6ShaderTools_jll
-   1318.7 ms  ✓ Qt6Declarative_jll
-    631.3 ms  ✓ Qt6Wayland_jll
-  80924.0 ms  ✓ Plots → UnitfulExt
-  4 dependencies successfully precompiled in 88 seconds. 180 already precompiled.
-┌ Warning: Module Plots with build ID fafbfcfd-4f55-2d7e-0000-01162c17f42a is missing from the cache.
-│ This may mean Plots [91a5bcdd-55d7-5caf-9e0b-520d859cae80] does not support precompilation but is imported by a module that does.
-└ @ Base loading.jl:2541</code></pre><p>The bioreactor consists of 3 states: substrate concentration <span>$C_s(t)$</span>, biomass concentration <span>$C_x(t)$</span> and volume <span>$V(t)$</span>.</p><p class="math-container">\[\begin{aligned}
+using DataFrames</code></pre><p>The bioreactor consists of 3 states: substrate concentration <span>$C_s(t)$</span>, biomass concentration <span>$C_x(t)$</span> and volume <span>$V(t)$</span>.</p><p class="math-container">\[\begin{aligned}
 \frac{dC_s}{dt} &amp;= -\left(\frac{\mu(C_s)}{y_{x,s}} + m\right) C_x + \frac{Q_{in}(t)}{V}(C_{S,in} - C_s),\\
 \frac{dC_x}{dt} &amp;= \mu(C_s) C_x - \frac{Q_{in}(t)}{V}C_x,\\
 \frac{dV}{dt} &amp;= Q_{in}(t).
@@ -121,7 +113,7 @@ C_s_range_plot = 0.0:0.01:50.0
 μ_max = 0.421; K_s = 0.439*10 # TODO extract the  values from the model.
 plot!(plts[4], C_s_range_plot, μ_max .* C_s_range_plot ./ (K_s .+ C_s_range_plot), lw=3, c=1)
 plot!(plts[4], ylabel=&quot;μ(1/h)&quot;, xlabel=&quot;Cₛ(g/L)&quot;,ylims=(0,0.5))
-plot(plts..., layout = 4, tickfontsize=10, guidefontsize=12, legendfontsize=14, grid=false, legend=false)</code></pre><img src="2f4798ba.svg" alt="Example block output"/><p>Now we can train the neural network to match this data:</p><pre><code class="language-julia hljs">function loss(x, (probs, get_varss, datas))
+plot(plts..., layout = 4, tickfontsize=10, guidefontsize=12, legendfontsize=14, grid=false, legend=false)</code></pre><img src="991e791d.svg" alt="Example block output"/><p>Now we can train the neural network to match this data:</p><pre><code class="language-julia hljs">function loss(x, (probs, get_varss, datas))
     loss = zero(eltype(x))
     for i in eachindex(probs)
         prob = probs[i]
@@ -169,74 +161,55 @@ plot!(plts[4], C_s_range_plot, μ_max .* C_s_range_plot ./ (K_s .+ C_s_range_plo
 plot!(plts[4], C_s_range_plot, μ_predicted_plot, lw=3, c=2)
 scatter!(plts[4], data[!, &quot;C_s(t)&quot;], μ_predicted_data, ms=3, c=2)
 plot!(plts[4], ylabel=&quot;μ(1/h)&quot;, xlabel=&quot;Cₛ(g/L)&quot;,ylims=(0,0.5))
-plot(plts..., layout = 4, tickfontsize=10, guidefontsize=12, legendfontsize=14, grid=false, legend=false)</code></pre><img src="4ac142b2.svg" alt="Example block output"/><p>On the above figure we see that the neural network predicts <span>$C_s$</span> well, except during the final hours of the experiment, where we have multiple positive realizations of the noise in a row. The neural network also predicts <span>$µ$</span> well in the low substrate concentration region, where we have available data. However, the fit is poor at higher substrate concentrations, where we do not have data.</p><p>We continue by making the neural network interpretable using symbolic regression.</p><pre><code class="language-julia hljs">options = SymbolicRegression.Options(
+plot(plts..., layout = 4, tickfontsize=10, guidefontsize=12, legendfontsize=14, grid=false, legend=false)</code></pre><img src="aead4090.svg" alt="Example block output"/><p>On the above figure we see that the neural network predicts <span>$C_s$</span> well, except during the final hours of the experiment, where we have multiple positive realizations of the noise in a row. The neural network also predicts <span>$µ$</span> well in the low substrate concentration region, where we have available data. However, the fit is poor at higher substrate concentrations, where we do not have data.</p><p>We continue by making the neural network interpretable using symbolic regression.</p><pre><code class="language-julia hljs">options = SymbolicRegression.Options(
     unary_operators=(exp, sin, cos),
     binary_operators=(+, *, /, -),
     seed=123,
     deterministic=true,
-    save_to_file=false
+    save_to_file=false,
+    defaults=v&quot;0.24.5&quot;
 )
 hall_of_fame = equation_search(collect(data[!, &quot;C_s(t)&quot;])&#39;, μ_predicted_data; options, niterations=1000, runtests=false, parallelism=:serial)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">HallOfFame{...}:
     .exists[1] = true
-    .members[1] = PopMember(tree = (0.03461630933539235), loss = 0.0004772054111745523, score = 0.047720541117455224)
+    .members[1] = PopMember(tree = (0.03551967706084014), loss = 0.0004683238664017844, score = 0.050032386559339635)
     .exists[2] = true
-    .members[2] = PopMember(tree = (sin(0.03462872076362889)), loss = 0.00047720544132579516, score = 0.047720544132579513)
+    .members[2] = PopMember(tree = (sin(0.03552715019483136)), loss = 0.00046832386640178455, score = 0.05323238647850086)
     .exists[3] = true
-    .members[3] = PopMember(tree = (x1 * 0.07508049851626074), loss = 6.245993939753664e-5, score = 0.006245993939753664)
+    .members[3] = PopMember(tree = (x1 * 0.07579503213635719), loss = 8.608870276190847e-5, score = 0.018208869800843804)
     .exists[4] = true
-    .members[4] = PopMember(tree = (sin(x1) * 0.08341979318445461), loss = 5.142519002676616e-5, score = 0.005142519002676616)
+    .members[4] = PopMember(tree = (sin(x1) * 0.0843040042282712), loss = 7.129101235182377e-5, score = 0.019929100911827178)
     .exists[5] = true
-    .members[5] = PopMember(tree = (sin(sin(x1)) * 0.08996292553213395), loss = 5.027765297942683e-5, score = 0.005027765297942683)
+    .members[5] = PopMember(tree = (sin(sin(x1)) * 0.09099172176718581), loss = 6.737091347351719e-5, score = 0.02273709024466579)
     .exists[6] = true
-    .members[6] = PopMember(tree = (exp(-0.39327972945244905 / x1) * 0.0974407516668412), loss = 3.686019512511157e-5, score = 0.003686019512511157)
+    .members[6] = PopMember(tree = (sin(x1 / 0.7146950697539136) * 0.06651393061387612), loss = 6.59649165224196e-5, score = 0.025796490701547874)
     .exists[7] = true
-    .members[7] = PopMember(tree = (exp(-0.39369004795924345 / x1) * sin(0.09760396398508474)), loss = 3.6860987450156937e-5, score = 0.0036860987450156937)
+    .members[7] = PopMember(tree = ((sin(sin(x1)) * 0.09786010580294946) - 0.0034624157725401533), loss = 6.485571527867684e-5, score = 0.028885570729165443)
     .exists[8] = true
-    .members[8] = PopMember(tree = ((sin(2.518262885717172 - x1) * 0.1883399665948093) + -0.1250267985733005), loss = 3.435685183748005e-5, score = 0.003435685183748005)
+    .members[8] = PopMember(tree = (sin(0.09592966607735214 - (0.040623704007034356 / (x1 + 0.30479157966268416)))), loss = 5.201963750942278e-5, score = 0.03080196310423188)
     .exists[9] = true
-    .members[9] = PopMember(tree = ((sin(sin(2.5977647400472264 - x1)) * 0.2362007954695496) + -0.13481519012910054), loss = 3.427423201731642e-5, score = 0.003427423201731642)
+    .members[9] = PopMember(tree = (sin(sin(0.0967194504713283 - (0.04169676732074973 / (x1 + 0.31354181194076813))))), loss = 5.201631508764991e-5, score = 0.03400163101404644)
     .exists[10] = true
-    .members[10] = PopMember(tree = (sin(sin(sin(2.600546326272928 - x1)) * 0.2382273505614773) + -0.1351518190159462), loss = 3.426915365474368e-5, score = 0.0034269153654743678)
+    .members[10] = PopMember(tree = ((x1 - (-0.08962289390509877 / sin(0.626653258037531 / x1))) * 0.0632659508743066), loss = 2.5060984860285993e-5, score = 0.03450609628065674)
     .exists[11] = true
-    .members[11] = PopMember(tree = ((sin(sin((2.760366033714959 - x1) / 1.1071355168716595)) * 0.30069021407744007) + -0.18901873112618633), loss = 3.4182931174807874e-5, score = 0.0034182931174807875)
+    .members[11] = PopMember(tree = (sin(x1 - (-0.07589052460549461 / sin(0.6234215388584792 / x1))) * 0.07544188658538939), loss = 1.4290834354576645e-5, score = 0.036629083244722804)
     .exists[12] = true
-    .members[12] = PopMember(tree = (x1 * (x1 / (sin(1.096732215905458 / x1) + exp(exp(x1))))), loss = 1.8820886132287942e-5, score = 0.0018820886132287942)
+    .members[12] = PopMember(tree = (sin(x1 - sin(-0.07598817066992185 / sin(0.6238912900983539 / x1))) * 0.07544188658538939), loss = 1.4215746298937423e-5, score = 0.039821572728505575)
     .exists[13] = true
-    .members[13] = PopMember(tree = ((x1 / (sin(exp(0.3551738961687992 / x1)) + exp(exp(x1)))) * x1), loss = 1.790639772048319e-5, score = 0.0017906397720483188)
+    .members[13] = PopMember(tree = (sin(x1 - (x1 * (-0.461050668256523 / sin(0.6258764396439412 / x1)))) * 0.0636018156657843), loss = 9.370167697192607e-6, score = 0.042537016882968084)
     .exists[14] = true
-    .members[14] = PopMember(tree = ((x1 * x1) / ((sin(1.0830462044830114 / x1) / 0.735584753743258) + exp(exp(x1)))), loss = 1.5963021140482346e-5, score = 0.0015963021140482346)
+    .members[14] = PopMember(tree = (sin(0.06263004082809089 * sin(x1 - (-0.49283700599454094 / (sin(0.6656782399351536 / x1) / x1))))), loss = 8.207885752869992e-6, score = 0.04562078697788252)
     .exists[15] = true
-    .members[15] = PopMember(tree = ((x1 * x1) / (exp(exp(x1)) + sin(1.185752125541754 / sin(1.0989712654864805 / x1)))), loss = 1.2875910991410869e-5, score = 0.0012875910991410869)
+    .members[15] = PopMember(tree = (sin(sin(x1 - (-0.49283700599454094 / (sin(0.6656782399351536 / x1) / x1))) * sin(0.06267105788904614))), loss = 8.207885752869992e-6, score = 0.048820788992519515)
     .exists[16] = true
-    .members[16] = PopMember(tree = (x1 * (x1 / ((sin(1.0764517872546306 / x1) / (x1 - -0.36411790330591054)) + exp(exp(x1))))), loss = 1.1870066146229424e-5, score = 0.0011870066146229424)
+    .members[16] = PopMember(tree = (sin(sin((x1 - (-0.5161877203660398 / (sin(0.6654385188503485 / x1) / x1))) - 0.041993053494575265) * 0.06381495856784045)), loss = 5.777912422359795e-6, score = 0.05177778994881519)
     .exists[17] = true
-    .members[17] = PopMember(tree = ((x1 / ((sin(exp(0.354509005210081 / x1)) / (x1 - -0.28131080914664586)) + exp(exp(x1)))) * x1), loss = 6.3096663563076265e-6, score = 0.0006309666356307626)
+    .members[17] = PopMember(tree = ((0.13876290449269388 - sin(sin(-0.5323011040792817 / ((sin(0.6643641003852615 / x1) / x1) / exp(x1))))) * 0.06876459504766967), loss = 3.6604315646122484e-6, score = 0.054766040152387126)
     .exists[18] = true
-    .members[18] = PopMember(tree = (x1 * (x1 / (exp(exp(x1)) + (sin(sin(exp(0.35396123712895167 / x1))) / (x1 - -0.22224671208886942))))), loss = 6.040152094033613e-6, score = 0.0006040152094033613)
+    .members[18] = PopMember(tree = ((0.13876290449269388 - sin(sin(-0.48632167124859843 / ((sin(sin(0.6652902973478754 / x1)) / x1) / exp(x1))))) * 0.06876459504766967), loss = 3.3120235029784147e-6, score = 0.05793120136086074)
     .exists[19] = true
-    .members[19] = PopMember(tree = ((x1 * x1) / ((sin(exp(0.35911257919256345 / x1)) / ((x1 - 0.11565419619672157) / x1)) + exp(exp(x1)))), loss = 5.5035502080678e-6, score = 0.00055035502080678)
+    .members[19] = PopMember(tree = (sin((0.133973807362378 - sin(sin(-0.4863218727443811 / ((sin(sin(0.6652902911609115 / x1)) / x1) / exp(x1))))) * 0.06823882134833273)), loss = 2.8983956433696977e-6, score = 0.061089836864246565)
     .exists[20] = true
-    .members[20] = PopMember(tree = ((x1 * x1) / ((sin(sin(exp(0.361145920503288 / x1))) / ((x1 - 0.1277695459651075) / x1)) + exp(exp(x1)))), loss = 4.371922994777022e-6, score = 0.0004371922994777022)
-    .exists[21] = true
-    .members[21] = PopMember(tree = (x1 * (x1 / (exp(exp(x1)) + (sin(sin(sin(exp(0.36212872222217396 / x1)))) / ((x1 - 0.13598655890556657) / x1))))), loss = 3.93006967660296e-6, score = 0.00039300696766029597)
-    .exists[22] = true
-    .members[22] = PopMember(tree = (x1 * (x1 / ((sin(sin(sin(exp(0.36212872224031106 / x1)))) / ((x1 - sin(0.13598655893606426)) / x1)) + exp(exp(x1))))), loss = 3.932194321608421e-6, score = 0.00039321943216084204)
-    .exists[23] = true
-    .members[23] = PopMember(tree = ((((x1 / (exp(exp(x1)) + (x1 / ((x1 - 0.09372190845665604) / sin(exp(0.3542571221366439 / x1)))))) * 1.3586683628873875) + -0.024868034892338412) * x1), loss = 2.8176663922419484e-6, score = 0.0002817666392241948)
-    .exists[24] = true
-    .members[24] = PopMember(tree = (x1 * ((sin(1.3363526303625566 / (exp(exp(x1)) + (x1 / ((x1 - 0.10727730361291306) / sin(exp(0.3558977174443648 / x1)))))) * x1) + -0.02254782603538679)), loss = 2.3861551805486764e-6, score = 0.00023861551805486763)
-    .exists[25] = true
-    .members[25] = PopMember(tree = ((x1 * ((x1 * (1.3551662433667482 / (exp(exp(x1)) + (x1 / ((x1 - 0.09959260397610456) / sin(exp(0.3567962976891989 / x1))))))) + -0.021529763758689573)) - 0.002003144275150193), loss = 2.0741998688718535e-6, score = 0.00020741998688718534)
-    .exists[26] = true
-    .members[26] = PopMember(tree = (((1.3458822159838588 * ((x1 / (exp(exp(x1)) + (sin(x1) / ((x1 - 0.10142855381029298) / sin(exp(0.35685349244437276 / x1)))))) + -0.01652911070252711)) * x1) - 0.0016835594385766388), loss = 2.0612190963573654e-6, score = 0.00020612190963573653)
-    .exists[27] = true
-    .members[27] = PopMember(tree = (((((x1 * 1.3671580094699) / (exp(exp(x1)) + ((x1 + 0.03161519119332771) / ((x1 - 0.08129729573415381) / sin(exp(0.35613500550464977 / x1)))))) + -0.02209897777230289) * x1) - 0.002108758426238565), loss = 2.0409734795256094e-6, score = 0.00020409734795256095)
-    .exists[28] = true
-    .members[28] = PopMember(tree = ((x1 * (((x1 * 1.3670159645236433) / (exp(exp(x1)) + ((sin(x1) + 0.03305333952335773) / ((x1 - 0.08201883346042192) / sin(exp(0.35620788447399465 / x1)))))) + -0.023420101052859185)) - 0.0018213545629837198), loss = 2.03210573233427e-6, score = 0.000203210573233427)
-    .exists[29] = true
-    .members[29] = PopMember(tree = ((x1 * (sin((x1 * 1.3691025910397163) / (((sin(x1) + 0.031060257639322186) / ((x1 - 0.08353456065126356) / sin(exp(0.3562620714480004 / x1)))) + exp(exp(x1)))) + -0.023434283761930342)) - 0.0018002539115828102), loss = 2.029328409273302e-6, score = 0.00020293284092733023)
-    .exists[30] = true
-    .members[30] = PopMember(tree = ((sin(sin((x1 * 1.3697878221150286) / (exp(exp(x1)) + ((sin(x1) + 0.030704526604400113) / ((x1 - 0.08403097143530248) / sin(exp(0.3562578462421664 / x1)))))) + -0.023419918920043224) * x1) - 0.0017847708255521594), loss = 2.0270920657498105e-6, score = 0.00020270920657498105)
+    .members[20] = PopMember(tree = (sin(sin(0.06828681235709039) * (0.13387832777725647 - sin(sin(-0.48623269411166203 / ((sin(sin(0.6652932265550977 / x1)) / x1) / exp(x1))))))), loss = 2.898552371329801e-6, score = 0.06428985082638927)
 </code></pre><p>Next, we extract the 10 model structures which symbolic regression thinks are best, and predict the system with them.</p><pre><code class="language-julia hljs">n_best = 10
 function get_model_structures(hall_of_fame, options, n_best)
     best_models = []
@@ -309,7 +282,7 @@ plot!(plts[4], C_s_range_plot, μ_max .* C_s_range_plot ./ (K_s .+ C_s_range_plo
 plot!(plts[4], C_s_range_plot, μ_predicted_plot, lw=3, c=2)
 scatter!(plts[4], data[!, &quot;C_s(t)&quot;], μ_predicted_data, ms=3, c=2)
 plot!(plts[4], ylabel=&quot;μ(1/h)&quot;, xlabel=&quot;Cₛ(g/L)&quot;,ylims=(0,0.5))
-plot(plts..., layout = 4, tickfontsize=10, guidefontsize=12, legendfontsize=14, grid=false, legend=false)</code></pre><img src="f269471c.svg" alt="Example block output"/><p>On the figure we see that most plausible model structures predict the states <span>$C_s$</span> and <span>$C_x$</span> well, similar to the neural network. The plausible model structures also fit <span>$\mu$</span> well in the low <span>$C_s$</span> region, but not outside this region. One group of the structures predicts that <span>$\mu$</span> keeps increasing as <span>$C_s$</span> becomes large while another group predicts that <span>$\mu$</span> stays below <span>$0.1$</span> <span>$1/\mathrm{h}$</span>.</p><p>We now design a second experiment to start discriminating between these plausible model structures, using the following criterion:</p><p class="math-container">\[\begin{equation*}
+plot(plts..., layout = 4, tickfontsize=10, guidefontsize=12, legendfontsize=14, grid=false, legend=false)</code></pre><img src="df87a2a2.svg" alt="Example block output"/><p>On the figure we see that most plausible model structures predict the states <span>$C_s$</span> and <span>$C_x$</span> well, similar to the neural network. The plausible model structures also fit <span>$\mu$</span> well in the low <span>$C_s$</span> region, but not outside this region. One group of the structures predicts that <span>$\mu$</span> keeps increasing as <span>$C_s$</span> becomes large while another group predicts that <span>$\mu$</span> stays below <span>$0.1$</span> <span>$1/\mathrm{h}$</span>.</p><p>We now design a second experiment to start discriminating between these plausible model structures, using the following criterion:</p><p class="math-container">\[\begin{equation*}
 \argmax_{\bm u} \frac{2!(10-2)!}{10!}\sum_{i=1}^10 \sum_{j=i+1}^{10} \max_{t_k} (\bm C_s^i(t_k) - h(\bm C_s^j(t_k)))^2.
 \end{equation*}\]</p><p>In this equation, <span>$C_s^i$</span> denotes the predicted substrate concentration for the i&#39;th plausible model structure. The distance between two model structures is scored by the maximal squared difference between the two structures at the measurement times. The criterion then calculates the average distance between all model structures. Collecting measurements where the plausible model structures differ greatly in predictions, will cause at least some of the model structures to become unlikely, and thus cause new model structures to enter the top 10 plausible model structures.</p><pre><code class="language-julia hljs">function S_criterion(optimization_state, (probs_plausible, syms_cache))
     n_structures = length(probs_plausible)
@@ -365,7 +338,7 @@ for i in 1:length(model_structures)
     plot!(plts[2], sol_plausible, idxs=:C_s, lw=3,ls=:dash,c=i+2)
 end
 plot!(plts[2],xlabel=&quot;t(h)&quot;,ylabel=&quot;Cₛ(g/L)&quot;)
-plot(plts..., layout = (2, 1), tickfontsize=12, guidefontsize=14, legendfontsize=14, grid=false, legend=false)</code></pre><img src="43652090.svg" alt="Example block output"/><p>The above figure shows that a maximal control action is preferred. This causes the two aforementioned groups in the model structures to be easily discriminated from one another.</p><p>We now gather a second dataset and perform the same exercise.</p><pre><code class="language-julia hljs">@mtkbuild true_bioreactor2 = TrueBioreactor()
+plot(plts..., layout = (2, 1), tickfontsize=12, guidefontsize=14, legendfontsize=14, grid=false, legend=false)</code></pre><img src="d7233b8d.svg" alt="Example block output"/><p>The above figure shows that a maximal control action is preferred. This causes the two aforementioned groups in the model structures to be easily discriminated from one another.</p><p>We now gather a second dataset and perform the same exercise.</p><pre><code class="language-julia hljs">@mtkbuild true_bioreactor2 = TrueBioreactor()
 prob2 = ODEProblem(true_bioreactor2, [], (0.0, 15.0), [], tstops=0:15, save_everystep=false)
 sol2 = solve(prob2, Rodas5P())
 @mtkbuild ude_bioreactor2 = UDEBioreactor()
@@ -403,65 +376,45 @@ total_data = hcat(collect(data[!, &quot;C_s(t)&quot;]&#39;), collect(data2[!, &q
 total_predicted_data =  vcat(μ_predicted_data, μ_predicted_data2)
 hall_of_fame = equation_search(total_data, total_predicted_data; options, niterations=1000, runtests=false, parallelism=:serial)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">HallOfFame{...}:
     .exists[1] = true
-    .members[1] = PopMember(tree = (0.19708511032577197), loss = 0.028391808377961965, score = 0.42228130058513014)
+    .members[1] = PopMember(tree = (0.19701993669993115), loss = 0.02831501263997261, score = 0.42498198576025786)
     .exists[2] = true
-    .members[2] = PopMember(tree = (sin(0.19839035326400886)), loss = 0.028391808418957935, score = 0.42228130119487756)
+    .members[2] = PopMember(tree = (sin(0.1983553338152563)), loss = 0.02831501402707069, score = 0.4281820063417084)
     .exists[3] = true
-    .members[3] = PopMember(tree = (x1 * 0.009296917346574483), loss = 0.0015351410404411132, score = 0.022832689855792024)
+    .members[3] = PopMember(tree = (x1 * 0.00945883679424181), loss = 0.0016298777176305234, score = 0.033878747663012306)
     .exists[4] = true
-    .members[4] = PopMember(tree = (sin(x1 * 0.009557088846144405)), loss = 0.0014635050056619773, score = 0.02176722204435188)
+    .members[4] = PopMember(tree = (sin(x1 * 0.009726003671070012)), loss = 0.001550765028945566, score = 0.035900280852511485)
     .exists[5] = true
-    .members[5] = PopMember(tree = ((x1 * 0.008325986296347072) + 0.038827765894663496), loss = 0.0007441162179479577, score = 0.011067500883299062)
+    .members[5] = PopMember(tree = ((x1 * 0.008457289486938786) - -0.039324422715901426), loss = 0.0008178493940826866, score = 0.028182728459940423)
     .exists[6] = true
-    .members[6] = PopMember(tree = (exp(-1.648870477837287 / x1) * 0.3920958245939909), loss = 0.00030492144843762903, score = 0.004535203397698705)
+    .members[6] = PopMember(tree = (exp(-1.745262750054028 / x1) * 0.39317758853597), loss = 0.0003618695659276008, score = 0.024590428009133736)
     .exists[7] = true
-    .members[7] = PopMember(tree = ((x1 * 0.426410962485856) / (x1 - -5.28419323656277)), loss = 7.7857575865149e-5, score = 0.0011580029689923052)
+    .members[7] = PopMember(tree = (exp(-4.3465564407772055 / exp(x1)) * 0.37556587954345827), loss = 0.00017401342657918185, score = 0.02499211277577548)
     .exists[8] = true
-    .members[8] = PopMember(tree = ((exp(-2.495048355206404 / x1) * 0.3671911400099039) + 0.031597263145994856), loss = 5.532066844344928e-6, score = 8.22803659018476e-5)
+    .members[8] = PopMember(tree = ((exp(-2.8060823119335945 / x1) * 0.3682889239598755) + 0.03356502069587083), loss = 7.012594659332907e-6, score = 0.025704459349084788)
     .exists[9] = true
-    .members[9] = PopMember(tree = ((exp(-6.49857445249848 / exp(x1)) * 0.34718961631471373) + 0.02910192427967693), loss = 2.2086036464408836e-7, score = 3.284933484617528e-6)
+    .members[9] = PopMember(tree = ((exp(-7.458617072285153 / exp(x1)) * 0.34361451680689514) + 0.03243739878625501), loss = 1.83698095951205e-7, score = 0.028802735882223627)
     .exists[10] = true
-    .members[10] = PopMember(tree = ((exp(exp(-5.183072554814766 / exp(x1))) * 0.2029721468591942) + -0.17544205954600736), loss = 2.1141953325787023e-8, score = 3.1445166959683194e-7)
+    .members[10] = PopMember(tree = ((exp((x1 * -0.06605921530630715) * x1) * -0.3444675911343022) + 0.3760539765634865), loss = 1.1571158462944339e-7, score = 0.032001721440757865)
     .exists[11] = true
-    .members[11] = PopMember(tree = ((exp(-7.709345738087925 / (exp(x1) + 0.6139698213782036)) * 0.35119672802613944) + 0.025097038388360523), loss = 1.7745596533008078e-9, score = 2.6393646659838223e-8)
+    .members[11] = PopMember(tree = ((exp((-6.375448296374913 - x1) / exp(x1)) * 0.34474542498291066) + 0.03130791485131507), loss = 1.9760432423964754e-8, score = 0.035200294161753506)
     .exists[12] = true
-    .members[12] = PopMember(tree = ((sin(exp(-8.802594278666502 / (exp(x1) + 0.8543819546263851))) * 0.41827863051892517) + 0.024324732625917812), loss = 7.603660866141412e-10, score = 1.1309190865963917e-8)
+    .members[12] = PopMember(tree = (sin((exp((exp(x1) - x1) * -0.08906758197477413) * -0.3863259314664916) + 0.3855338592625565)), loss = 1.0217196600548644e-8, score = 0.038400150294534426)
     .exists[13] = true
-    .members[13] = PopMember(tree = ((sin(exp(-8.8025993935483 / (exp(x1) + 0.8543871496687946))) * 0.41827869236392506) + sin(0.024324674419186648)), loss = 7.661199059256039e-10, score = 1.1394769433902627e-8)
+    .members[13] = PopMember(tree = (sin((exp((exp(x1) - x1) * sin(-0.08906758197477413)) * -0.3863259314664916) + 0.3855338592625565)), loss = 1.157359229306547e-8, score = 0.04160017251411626)
     .exists[14] = true
-    .members[14] = PopMember(tree = (((sin(exp(-8.802577978013616 / (exp(x1) + 0.8544358881863922))) * 0.4155231851949957) + 0.024163392686978154) / 0.9934095189738869), loss = 7.604209416329388e-10, score = 1.1310006743852817e-8)
+    .members[14] = PopMember(tree = (sin((exp((exp(x1 * 1.8807720853579226) - x1) * -0.01443990957722531) * -0.3591851756648414) + 0.38552860351419455)), loss = 6.56954828735958e-9, score = 0.04480009626294819)
     .exists[15] = true
-    .members[15] = PopMember(tree = ((exp(-6.774959773814544 / (((x1 + -1.908850820048358) / -3.0097771821599957) + exp(x1))) * 0.3539707067278957) + 0.022323351152494553), loss = 5.982038213723391e-10, score = 8.897294752812756e-9)
+    .members[15] = PopMember(tree = (sin((exp((exp(x1 * 1.8807720853579226) - x1) * sin(-0.01443990957722531)) * -0.3591851756648414) + 0.38552860351419455)), loss = 6.570736079824285e-9, score = 0.048000098295278605)
     .exists[16] = true
-    .members[16] = PopMember(tree = ((exp(-6.774959760945326 / (((x1 + -1.9088508337687213) / -3.009777174934944) + exp(x1))) * 0.35397070682974585) + sin(0.022323351013755745)), loss = 6.016412388054112e-10, score = 8.948420665081818e-9)
+    .members[16] = PopMember(tree = (sin((exp((exp(x1 * 1.8807720853579226) - (x1 / 0.9994907134444889)) * -0.01443990957722531) * -0.3591851756648414) + 0.38552860351419455)), loss = 6.579473243938862e-9, score = 0.05120009671477457)
     .exists[17] = true
-    .members[17] = PopMember(tree = ((exp(-5.837478444221572 / (((x1 + -1.6751582066636947) / -2.914880637374999) + exp(x1 + -0.12716515940684))) * 0.3547994059545832) + 0.021494642400777607), loss = 5.244493714663169e-10, score = 7.800319011935642e-9)
+    .members[17] = PopMember(tree = (sin(cos(exp(((exp(x1 * 1.380909768597154) - 0.20813749662248507) * x1) * -0.009332646406887983) * 0.8686284322386512) + -0.6144661401359365)), loss = 6.273320827438731e-9, score = 0.05440009044365803)
     .exists[18] = true
-    .members[18] = PopMember(tree = ((exp(-6.312675718351794 / (((x1 + (-0.6766071986589217 - cos(x1))) * -0.25221239415026775) + exp(x1))) * 0.35258166790577167) + 0.023712395508205617), loss = 3.5931822712453736e-10, score = 5.344265721089818e-9)
+    .members[18] = PopMember(tree = (sin(cos(exp(((exp(x1 * 1.380909768597154) - 0.20813749662248507) * x1) * sin(-0.009332646406887983)) * 0.8686284322386512) + -0.6144661401359365)), loss = 6.273333707613395e-9, score = 0.05760009245848689)
     .exists[19] = true
-    .members[19] = PopMember(tree = ((exp(-6.3114299128624305 / (exp(x1) + ((sin(x1 + -0.6421617941453819) - cos(x1)) * -0.2502180558908396))) * 0.3523340789305626) + 0.023959977041101543), loss = 1.8338902608018032e-10, score = 2.7276091545577648e-9)
+    .members[19] = PopMember(tree = (sin(cos(exp((((exp(x1 * 1.3809096359880475) + 0.6314308765832464) - 0.8473605180347423) * x1) * -0.009349142826465626) * 0.8686153403671144) + -0.6144661392398105)), loss = 6.304037636265136e-9, score = 0.060800091205200996)
     .exists[20] = true
-    .members[20] = PopMember(tree = ((exp(-6.3114299128624305 / (exp(x1) + ((sin(x1 + -0.6421617941453819) - cos(x1)) * -0.2502180558908396))) * 0.3523340789305626) + sin(0.023959977041101543)), loss = 1.8864392243465204e-10, score = 2.805767066778982e-9)
-    .exists[21] = true
-    .members[21] = PopMember(tree = ((exp(-6.359433816813124 / (exp(x1) + (((x1 + -0.649918773284952) - cos(sin(x1 + -0.07623711771918924))) * -0.2982832521821609))) * 0.35346739298286456) + 0.022826652271788508), loss = 1.531407771228554e-10, score = 2.277716363648513e-9)
-    .exists[22] = true
-    .members[22] = PopMember(tree = ((0.3535042484765592 * exp(-6.360018907225692 / (exp(x1) + (-0.299050696392995 * ((x1 + -0.65336055949556) - cos(sin(x1 + sin(-0.07613164632692765)))))))) + 0.022789801482388843), loss = 1.5336604985351354e-10, score = 2.281066923796789e-9)
-    .exists[23] = true
-    .members[23] = PopMember(tree = ((exp(-6.3772278634869695 / ((((x1 + -0.9238510121399635) - cos(sin(1.0458802641849285 * x1))) / -3.9727214436210745) + exp(x1 * 0.9859207015724539))) * 0.35329301523078305) + 0.023001034619926655), loss = 1.5298486256025967e-10, score = 2.275397391802951e-9)
-    .exists[24] = true
-    .members[24] = PopMember(tree = (0.022788609117611314 + (0.35350469877408164 * exp(-6.360007561017571 / (((-0.6533708836234912 + (x1 - cos(sin(0.9233836058623434 + (x1 - cos(0.022788609117611314)))))) * -0.29908505619176096) + exp(x1))))), loss = 1.5376750065779791e-10, score = 2.2870378420805903e-9)
-    .exists[25] = true
-    .members[25] = PopMember(tree = ((exp(-6.377243834192017 / (exp(x1 * 0.9857982390563945) + ((x1 + (-0.923844221250589 - cos(sin(x1 - (x1 * -0.0428866619379135))))) / -3.972720636208253))) * 0.3532933631184099) + 0.023000686730245554), loss = 1.5272570426646243e-10, score = 2.2715428398172076e-9)
-    .exists[26] = true
-    .members[26] = PopMember(tree = ((exp(-6.377243834135889 / (((x1 + (-0.9238442214245748 - cos(sin((x1 * sin(-0.042886662042300294)) - x1)))) / -3.9727206361052887) + exp(x1 * 0.9857982370382452))) * 0.35329337329283517) + 0.023000671405901472), loss = 1.5272600609946333e-10, score = 2.2715473290850447e-9)
-    .exists[27] = true
-    .members[27] = PopMember(tree = ((exp(-6.37722389032734 / (exp(x1 * 0.9859606345750512) + (((x1 + -0.9186135918302873) - cos(sin(((0.1320067174524839 - x1) * -0.04536400782695809) + x1))) / -3.9727218986993647))) * 0.3532762871941315) + 0.02301776294954631), loss = 1.520767035899313e-10, score = 2.261890025663287e-9)
-    .exists[28] = true
-    .members[28] = PopMember(tree = ((exp(-6.37722389032734 / (exp(x1 * 0.9859606345750512) + (((x1 + -0.9186135918302873) - cos(sin(((sin(0.1320067174524839) - x1) * -0.04536400782695809) + x1))) / -3.9727218986993647))) * 0.3532762871941315) + 0.02301776294954631), loss = 1.5207791189208624e-10, score = 2.2619079971640347e-9)
-    .exists[29] = true
-    .members[29] = PopMember(tree = ((exp(-6.377672909533269 / (exp(x1) + ((x1 + (-0.9203947549695803 - sin(cos((sin(x1 * (x1 + 0.39856280826197316)) * -0.2695933309055036) - sin(x1))))) / -3.9728388074411822))) * 0.3526838930496361) + 0.02361016836042715), loss = 1.2743177670209238e-10, score = 1.8953374045523275e-9)
-    .exists[30] = true
-    .members[30] = PopMember(tree = ((exp(-6.377672913206818 / (((x1 + (-0.9203947543639504 - sin(cos((sin((x1 + sin(0.40994927670749004)) * x1) * -0.26959333518332024) - sin(x1))))) / -3.972838806622446) + exp(x1))) * 0.3526839375233677) + 0.02361012281181735), loss = 1.274327917235035e-10, score = 1.8953525013209413e-9)
+    .members[20] = PopMember(tree = (sin(cos(exp((x1 * (exp(x1 * 1.380909768597154) - (0.20813749662248507 * cos(0.1312540833324842)))) * -0.009332646406887983) * 0.8686284322386512) + -0.6144661401359365)), loss = 6.28792045877475e-9, score = 0.06400008925446533)
 </code></pre><pre><code class="language-julia hljs">model_structures = get_model_structures(hall_of_fame, options, n_best)
 probs_plausible, syms_cache = get_probs_and_caches(model_structures);
 
@@ -487,7 +440,7 @@ plot!(plts[4], C_s_range_plot, μ_predicted_plot2, lw=3, c=2)
 scatter!(plts[4], data[!, &quot;C_s(t)&quot;], μ_predicted_data, ms=3, c=2)
 scatter!(plts[4], data2[!, &quot;C_s(t)&quot;], μ_predicted_data2, ms=3, c=2)
 plot!(plts[4], ylabel=&quot;μ(1/h)&quot;, xlabel=&quot;Cₛ(g/L)&quot;,ylims=(0,0.5))
-plot(plts..., layout = 4, tickfontsize=10, guidefontsize=12, legendfontsize=14, grid=false, legend=false)</code></pre><img src="56a5e263.svg" alt="Example block output"/><p>The above shows the data analysis corresponding to this second experiment. Both the UDE and most of the plausible model structures predict the states well,</p><p>The UDE and the plausible model structures also approximate the missing physics <span>$\mu$</span> well in the region where we have gathered data. This means in the regions of low substrate concentration, with data coming primarily from the first experiment, and high substrate concentration, coming from the second experiment However, we do not have any measurements at substrate concentrations between these two groups. This causes there to be substantial disagreement between the plausible model structures in the medium substrate concentration range. One of the plausible model structures is the Monod equation, with reasonably accurate parameter values: <span>$\nicefrac{C_s}{(C_s - (-5.4499))}*0.42887$</span>. Symbolic regression sometimes finds the true model structure in a somewhat unusual form, like with a double negative sign. This is because symbolic regression considers addition and subtraction to have the same complexity, as well as positive and negative numbers.</p><p>We now optimize the controls for a third experiment:</p><pre><code class="language-julia hljs">prob = OptimizationProblem(S_criterion, zeros(15), (probs_plausible, syms_cache), lb=lb, ub=ub)
+plot(plts..., layout = 4, tickfontsize=10, guidefontsize=12, legendfontsize=14, grid=false, legend=false)</code></pre><img src="14534cd3.svg" alt="Example block output"/><p>The above shows the data analysis corresponding to this second experiment. Both the UDE and most of the plausible model structures predict the states well,</p><p>The UDE and the plausible model structures also approximate the missing physics <span>$\mu$</span> well in the region where we have gathered data. This means in the regions of low substrate concentration, with data coming primarily from the first experiment, and high substrate concentration, coming from the second experiment However, we do not have any measurements at substrate concentrations between these two groups. This causes there to be substantial disagreement between the plausible model structures in the medium substrate concentration range. One of the plausible model structures is the Monod equation, with reasonably accurate parameter values: <span>$\nicefrac{C_s}{(C_s - (-5.4499))}*0.42887$</span>. Symbolic regression sometimes finds the true model structure in a somewhat unusual form, like with a double negative sign. This is because symbolic regression considers addition and subtraction to have the same complexity, as well as positive and negative numbers.</p><p>We now optimize the controls for a third experiment:</p><pre><code class="language-julia hljs">prob = OptimizationProblem(S_criterion, zeros(15), (probs_plausible, syms_cache), lb=lb, ub=ub)
 control_pars_opt = solve(prob, BBO_adaptive_de_rand_1_bin_radiuslimited(), maxtime=60.0)
 
 optimization_state = control_pars_opt.u
@@ -512,7 +465,7 @@ for i in 1:length(model_structures)
     plot!(plts[2], sol_plausible, idxs=:C_s, lw=3,ls=:dash,c=i+2)
 end
 plot!(plts[2],xlabel=&quot;t(h)&quot;,ylabel=&quot;Cₛ(g/L)&quot;)
-plot(plts..., layout = (2, 1), tickfontsize=12, guidefontsize=14, legendfontsize=14, grid=false, legend=false)</code></pre><img src="17402890.svg" alt="Example block output"/><p>The optimal design algorithm is also aware of this uncertainty at the medium concentration range, and aims to remedy this in the next experiment, as can be seen on the above figure. Using the first control action, the bioreactor substrate concentration gets pumped from a low substrate concentration level to a medium level. At this level, there is substantial disagreement between the plausible model structures, leading to substantial disagreement in predicted substrate concentrations. To keep the reactor at the medium substrate concentration range, while the biomass concentration increases rapidly, an increasing amount of substrate has to be pumped into the reactor every hour. This explains the staircase with increasing step heights form of the control function. After the staircase reaches the maximal control value, a zero control is used. Some model structures decrease more rapidly in substrate concentration than others.</p><pre><code class="language-julia hljs">@mtkbuild true_bioreactor3 = TrueBioreactor()
+plot(plts..., layout = (2, 1), tickfontsize=12, guidefontsize=14, legendfontsize=14, grid=false, legend=false)</code></pre><img src="964ef03a.svg" alt="Example block output"/><p>The optimal design algorithm is also aware of this uncertainty at the medium concentration range, and aims to remedy this in the next experiment, as can be seen on the above figure. Using the first control action, the bioreactor substrate concentration gets pumped from a low substrate concentration level to a medium level. At this level, there is substantial disagreement between the plausible model structures, leading to substantial disagreement in predicted substrate concentrations. To keep the reactor at the medium substrate concentration range, while the biomass concentration increases rapidly, an increasing amount of substrate has to be pumped into the reactor every hour. This explains the staircase with increasing step heights form of the control function. After the staircase reaches the maximal control value, a zero control is used. Some model structures decrease more rapidly in substrate concentration than others.</p><pre><code class="language-julia hljs">@mtkbuild true_bioreactor3 = TrueBioreactor()
 prob3 = ODEProblem(true_bioreactor3, [], (0.0, 15.0), [], tstops=0:15, save_everystep=false)
 sol3 = solve(prob3, Rodas5P())
 @mtkbuild ude_bioreactor3 = UDEBioreactor()
@@ -540,63 +493,43 @@ total_data = hcat(collect(data[!, &quot;C_s(t)&quot;]&#39;), collect(data2[!, &q
 total_predicted_data =  vcat(μ_predicted_data, μ_predicted_data2, μ_predicted_data3)
 hall_of_fame = equation_search(total_data, total_predicted_data; options, niterations=1000, runtests=false, parallelism=:serial)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">HallOfFame{...}:
     .exists[1] = true
-    .members[1] = PopMember(tree = (0.2352295472782257), loss = 0.023526850575903046, score = 0.29833772610270143)
+    .members[1] = PopMember(tree = (0.23502604132686242), loss = 0.023221892090815478, score = 0.29917436825566945)
     .exists[2] = true
-    .members[2] = PopMember(tree = (sin(0.23745658119561955)), loss = 0.023526850579120396, score = 0.2983377261434998)
+    .members[2] = PopMember(tree = (sin(0.23724535979926353)), loss = 0.023221892090815488, score = 0.30237436817483077)
     .exists[3] = true
-    .members[3] = PopMember(tree = (x1 * 0.010790340799971111), loss = 0.00980696339735567, score = 0.12435949089319243)
+    .members[3] = PopMember(tree = (x1 * 0.01092207976995186), loss = 0.009608645599147704, score = 0.13206688554131443)
     .exists[4] = true
-    .members[4] = PopMember(tree = (sin(x1 * 0.011276831539065415)), loss = 0.009271259791132566, score = 0.11756637613990237)
+    .members[4] = PopMember(tree = (sin(x1 * 0.011404465203225647)), loss = 0.00909690472289598, score = 0.1287444980253143)
     .exists[5] = true
-    .members[5] = PopMember(tree = (x1 / (x1 + 50.42156439877323)), loss = 0.004668043632070574, score = 0.05919421802961297)
+    .members[5] = PopMember(tree = ((x1 * 0.008076938706035684) - -0.09414310760879542), loss = 0.00541773271537424, score = 0.08505165119067447)
     .exists[6] = true
-    .members[6] = PopMember(tree = (exp(-1.4825698968857774 / x1) * 0.3774172177219026), loss = 0.00023658739342104112, score = 0.0030001017242015362)
+    .members[6] = PopMember(tree = (0.37687491465465117 / exp(1.4708561272857203 / x1)), loss = 0.00029176130341624723, score = 0.022918639509176712)
     .exists[7] = true
-    .members[7] = PopMember(tree = ((-1.7043673677696918 / (x1 + 4.0401559548862425)) + 0.41605030115341063), loss = 7.749949254397004e-6, score = 9.827504240351905e-5)
+    .members[7] = PopMember(tree = (0.41929017605653085 / ((x1 + 4.2991674778342555) / x1)), loss = 2.2921602116265202e-5, score = 0.02269214622709096)
     .exists[8] = true
-    .members[8] = PopMember(tree = ((-1.7043673677696918 / (x1 + exp(1.3965850507445323))) + 0.41605030115341063), loss = 7.753886945638311e-6, score = 9.832497521740062e-5)
+    .members[8] = PopMember(tree = (0.4192824957430995 / ((x1 + exp(1.4554865463803706)) / x1)), loss = 2.2944075385181447e-5, score = 0.025892432811882762)
     .exists[9] = true
-    .members[9] = PopMember(tree = (((x1 / (x1 + 4.04015580711552)) * 0.4218568263618378) + -0.005806527074061265), loss = 7.749949254396348e-6, score = 9.827504240351073e-5)
+    .members[9] = PopMember(tree = ((0.42093063536374703 / ((x1 + 4.030819433232904) / x1)) - 0.004663893292891589), loss = 2.0069316309167732e-5, score = 0.02905579275392465)
     .exists[10] = true
-    .members[10] = PopMember(tree = (((x1 / (x1 + 4.040157810785112)) * 0.42185681326175534) + sin(-0.005806503648307111)), loss = 7.749949255159687e-6, score = 9.827504241319044e-5)
+    .members[10] = PopMember(tree = ((0.42093063536374703 / ((x1 + 4.030819433232904) / x1)) - sin(0.004663893292891589)), loss = 2.0069316310464214e-5, score = 0.032255791043287865)
     .exists[11] = true
-    .members[11] = PopMember(tree = (((0.0004030704582785295 - (-0.4045209330269703 / (x1 + 3.451321991133269))) * x1) - 0.010101990631287874), loss = 4.333724666122816e-6, score = 5.495480826364892e-5)
+    .members[11] = PopMember(tree = ((exp(-3.2829855789751567 / (x1 + sin(x1))) * 0.3886676710042523) - -0.019247335269764066), loss = 1.9818239120086744e-5, score = 0.03545259295637693)
     .exists[12] = true
-    .members[12] = PopMember(tree = ((exp(-1.2590609720148995 / x1) + (x1 * 0.4241803578581498)) / (x1 + 7.410467730226156)), loss = 2.9772167440478068e-6, score = 3.7753292590885516e-5)
+    .members[12] = PopMember(tree = (sin(exp(0.8944699655196666 / (6.8264817808512746 - (cos(x1) - x1))) * 2.69970803210875)), loss = 8.190090169478688e-6, score = 0.03850438480211776)
     .exists[13] = true
-    .members[13] = PopMember(tree = (((x1 * 0.4240044584295104) + sin(exp(-1.372451524845782 / x1))) / (x1 + 7.0066181563746985)), loss = 2.7197378941533905e-6, score = 3.448827187129477e-5)
+    .members[13] = PopMember(tree = (sin(exp(0.792785101267852 / (x1 + (cos(cos(x1)) + 4.668500655077354))) * 2.70463492600443)), loss = 6.00295654491826e-6, score = 0.04167651072937715)
     .exists[14] = true
-    .members[14] = PopMember(tree = ((((x1 * 0.42215181386620765) + exp(-1.3199230001713782 / x1)) / (x1 + 7.458382996142565)) - -0.002149917605600206), loss = 2.3394101665898596e-6, score = 2.966543725307659e-5)
+    .members[14] = PopMember(tree = (sin(exp(0.779548173246725 / (x1 + (cos(sin(exp(x1))) + 4.5923350395550635))) * 2.7055797272195683)), loss = 1.620999378881824e-6, score = 0.0448206588322178)
     .exists[15] = true
-    .members[15] = PopMember(tree = (((sin(exp(-1.421628596884154 / x1)) + (x1 * 0.4224958770849612)) / (x1 + 7.053432463823801)) + 0.001714887850578679), loss = 2.300338369920745e-6, score = 2.916997820574665e-5)
+    .members[15] = PopMember(tree = (sin(exp(sin(0.7758801374549321 / ((cos(sin(exp(x1))) + x1) + 4.551194245416134))) * 2.705815625055117)), loss = 1.6212362281866473e-6, score = 0.04802066386561498)
     .exists[16] = true
-    .members[16] = PopMember(tree = ((exp((-1.471325855028875 / x1) - (x1 * 0.03693307799497251)) + (x1 * 0.4375767651895986)) / (x1 + 6.824432865275124)), loss = 2.0767539283092673e-6, score = 2.633476345028633e-5)
+    .members[16] = PopMember(tree = (sin(exp(0.7794496946880752 / (x1 + ((cos(sin(exp(x1))) / 1.0071323641456111) + 4.592351990785665))) * 2.705601835182065)), loss = 1.6283288138617742e-6, score = 0.05122075255343381)
     .exists[17] = true
-    .members[17] = PopMember(tree = (sin((exp((-1.557370371489021 / x1) - (x1 * 0.0490162550584485)) + (x1 * 0.45003249528660444)) / (x1 + 6.7254247954645905))), loss = 1.9575148116326433e-6, score = 2.4822723969394898e-5)
+    .members[17] = PopMember(tree = (sin(exp(0.7723653214975493 / ((cos(sin(sin(exp(x1))) * -1.1433053124723715) + 4.544895890806148) + x1)) * 2.706194463011244)), loss = 1.3611872206627563e-6, score = 0.05441734599256441)
     .exists[18] = true
-    .members[18] = PopMember(tree = ((((x1 * (0.3963195191354119 - (x1 * -0.00044259564409410563))) + exp(-1.501311185024296 / x1)) / (x1 + 6.5209028953312504)) + 0.001736560671926705), loss = 1.7719114643612155e-6, score = 2.2469137355523085e-5)
+    .members[18] = PopMember(tree = (sin(exp(0.7723653214975493 / (x1 + (cos(sin(exp(x1)) * cos(sin(0.14829220705706533))) + 4.544189119125487))) * 2.706194463011244)), loss = 1.577463012454449e-6, score = 0.05762010454790927)
     .exists[19] = true
-    .members[19] = PopMember(tree = ((exp(-1.2077308025347657 / x1) + (x1 * (0.4244302583152289 - (cos(x1 * 0.20290941584898733) * 0.0037848956692140426)))) / (x1 + 7.556028608755514)), loss = 1.3435325629625012e-6, score = 1.7036978599664608e-5)
+    .members[19] = PopMember(tree = (sin(exp(0.7723653214975493 / (x1 + (cos(sin(sin(exp(0.01573524202166123 + x1))) * -1.1433053124723715) + 4.544895890806148))) * 2.706194463011244)), loss = 1.1224673455477329e-6, score = 0.06081430369502493)
     .exists[20] = true
-    .members[20] = PopMember(tree = ((((0.42447578308156153 - (cos(x1 * 0.20268371079011654) * sin(0.003798174916864625))) * x1) + exp(-1.200951472298868 / x1)) / (x1 + 7.557711499956269)), loss = 1.3542507855168385e-6, score = 1.7172893525226246e-5)
-    .exists[21] = true
-    .members[21] = PopMember(tree = (((((0.4225644019290767 - (cos(x1 * 0.20954111413165197) * 0.0034814515881000435)) * x1) + exp(-1.3051044600365034 / x1)) + 0.016658879727582922) / (x1 + 7.467336498583073)), loss = 6.391777659293997e-7, score = 8.105243013618385e-6)
-    .exists[22] = true
-    .members[22] = PopMember(tree = ((exp(-1.3072753510235116 / x1) + ((0.4224579390267843 - (cos(x1 * 0.2098960730683311) * 0.003454358582591576)) * (x1 + exp(-3.179828091630315)))) / (x1 + 7.458784246518816)), loss = 6.565101319212382e-7, score = 8.325030130525613e-6)
-    .exists[23] = true
-    .members[23] = PopMember(tree = (((((0.42200739286299177 - (cos((x1 * 0.23676932632588754) + -0.8414343724053864) * 0.003776655435092656)) * x1) + exp(-1.3101835786095728 / x1)) + 0.016819211822615917) / (x1 + 7.443168608080881)), loss = 5.05259963715333e-7, score = 6.407067030890937e-6)
-    .exists[24] = true
-    .members[24] = PopMember(tree = ((exp(-1.3102546890453517 / x1) + (0.016806618474601225 + ((0.4220044575149562 - (cos((x1 * 0.23713256625718293) + -0.8414203589842809) * sin(0.0037820275277622587))) * x1))) / (x1 + 7.443232788466345)), loss = 5.055706390167748e-7, score = 6.4110066216444645e-6)
-    .exists[25] = true
-    .members[25] = PopMember(tree = ((exp(-1.3209735197252535 / x1) + ((x1 * (0.4222375891295674 - (cos((4.251256822891388 / x1) - (x1 * 0.213860960381884)) * 0.003780085980255474))) + 0.016342616942091256)) / (x1 + 7.452568153574182)), loss = 4.385435561523769e-7, score = 5.561054035574865e-6)
-    .exists[26] = true
-    .members[26] = PopMember(tree = (((exp(-1.3213979450006337 / x1) + 0.01638947229614077) + ((0.4222409524966345 - sin(cos((x1 * 0.21362435896635645) - (4.251200638913364 / x1)) * 0.0037740669239852346)) * x1)) / (x1 + 7.451869569727413)), loss = 4.391256216340491e-7, score = 5.568435052922883e-6)
-    .exists[27] = true
-    .members[27] = PopMember(tree = ((((0.42190297176167885 - (cos(((1.2932772733612818 / x1) / 0.13627925925218554) - (x1 * 0.2208877268674393)) * 0.0038727266273395114)) * x1) + (0.016660977007585634 + exp(-1.327908646296246 / x1))) / (x1 + 7.4297680095062315)), loss = 3.5235335540252715e-7, score = 4.468099055430502e-6)
-    .exists[28] = true
-    .members[28] = PopMember(tree = (((((0.4202350142776053 - (cos(x1 * (0.20917789167990272 - (x1 / (exp(x1) * 0.0009145231846442093)))) * 0.0037332413960914712)) * x1) + exp(-1.3246280117450657 / x1)) / (x1 + 7.442174799069176)) + 0.002231460847357203), loss = 2.5071208476923434e-7, score = 3.179213173272348e-6)
-    .exists[29] = true
-    .members[29] = PopMember(tree = (((((0.4202350142776053 - (cos((0.20917789167990272 - ((x1 / exp(x1)) / sin(0.0009145233121215729))) * x1) * 0.0037332413960914712)) * x1) + exp(-1.3246280117450657 / x1)) / (x1 + 7.442174799069176)) + 0.002231460847357203), loss = 2.507120847692348e-7, score = 3.1792131732723544e-6)
-    .exists[30] = true
-    .members[30] = PopMember(tree = (((((0.4201775745084338 - (0.0037751759536074213 * cos((0.20922059176174154 - (((x1 - 0.6225442096058771) / exp(x1)) / 0.0009202813456164842)) * x1))) * x1) + exp(-1.324772899352567 / x1)) / (x1 + 7.441875251315)) + 0.0022504256828810775), loss = 2.1470796979094996e-7, score = 2.7226545804293587e-6)
-</code></pre><p>The Monod equation <span>$C_s / ((C_s - -4.631) / 0.42347)$</span> has a very high score, higher than all other model structures, indicating that it is a very good candidate for the true model structure.</p><p>In this tutorial, we have shown that experimental design can be used to explore the state space of a dynamic system in a thoughtful way, such that missing physics can be recovered in an efficient manner.</p></article><nav class="docs-footer"><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.8.0 on <span class="colophon-date" title="Thursday 12 December 2024 15:36">Thursday 12 December 2024</span>. Using Julia version 1.11.2.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+    .members[20] = PopMember(tree = (sin(exp(0.7723653214975493 / (x1 + (cos(sin(sin(exp(sin(0.023676419017362536) + x1))) * -1.1433053124723715) + 4.544895890806148))) * 2.706194463011244)), loss = 1.127929026992144e-6, score = 0.06401437159617196)
+</code></pre><p>The Monod equation <span>$C_s / ((C_s - -4.631) / 0.42347)$</span> has a very high score, higher than all other model structures, indicating that it is a very good candidate for the true model structure.</p><p>In this tutorial, we have shown that experimental design can be used to explore the state space of a dynamic system in a thoughtful way, such that missing physics can be recovered in an efficient manner.</p></article><nav class="docs-footer"><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.8.0 on <span class="colophon-date" title="Friday 10 January 2025 01:49">Friday 10 January 2025</span>. Using Julia version 1.11.2.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
