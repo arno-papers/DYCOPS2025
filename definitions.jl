@@ -114,7 +114,8 @@ options = SymbolicRegression.Options(
     binary_operators=(+, *, /, -),
     seed=123,
     deterministic=true,
-    save_to_file=false
+    save_to_file=false,
+    defaults=v"0.24.5"
 )
 
 n_best = 10

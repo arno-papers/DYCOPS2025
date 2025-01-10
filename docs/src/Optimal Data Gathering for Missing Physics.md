@@ -236,7 +236,8 @@ options = SymbolicRegression.Options(
     binary_operators=(+, *, /, -),
     seed=123,
     deterministic=true,
-    save_to_file=false
+    save_to_file=false,
+    defaults=v"0.24.5"
 )
 hall_of_fame = equation_search(collect(data[!, "C_s(t)"])', μ_predicted_data; options, niterations=1000, runtests=false, parallelism=:serial)
 ```
