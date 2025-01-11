@@ -43,7 +43,7 @@ The rate by which the biomass grows $μ(t)$ is an unknown function (missing phys
 which must be estimated from experimental data.
 The rate by which the substrate is consumed $σ(t)$ is dependent on $μ(t)$, trough a yield factor $y_{x:s}$ and a maintenance term $m$,
 where are assumed to be known parameters.
-More substrate can be pumped into the reactor  with pumping speed $Q_in(t)$.
+More substrate can be pumped into the reactor  with pumping speed $Q_{in}(t)$.
 This pumped substrate has known concentration $C_{s_{in}}$.
 The goal is to optimize the control action $Q_{in}(t)$, such that $μ(t)$ can be estimated as precisely as possible.
 We restrict $Q_{in}(t)$ to piecewise constant functions.
@@ -225,7 +225,7 @@ plot(plts..., layout = 4, tickfontsize=10, guidefontsize=12, legendfontsize=14, 
 On the above figure we see that the neural network predicts $C_s$ well, except during the final hours of the experiment,
 where we have multiple positive realizations of the noise in a row.
 The neural network also predicts $µ$ well in the low substrate concentration region,
-where we have available data.
+where we have data available.
 However, the fit is poor at higher substrate concentrations,
 where we do not have data.
 
@@ -318,7 +318,7 @@ scatter!(plts[4], data[!, "C_s(t)"], μ_predicted_data, ms=3, c=2)
 plot!(plts[4], ylabel="μ(1/h)", xlabel="Cₛ(g/L)",ylims=(0,0.5))
 plot(plts..., layout = 4, tickfontsize=10, guidefontsize=12, legendfontsize=14, grid=false, legend=false)
 ```
-On the figure we see that most plausible model structures predict the states $C_s$ and $C_x$ well, similar to the neural network.
+On the figure, we see that most plausible model structures predict the states $C_s$ and $C_x$ well, similar to the neural network.
 The plausible model structures also fit $\mu$ well in the low $C_s$ region, but not outside this region.
 One group of the structures predicts that $\mu$ keeps increasing as $C_s$ becomes large
 while another group predicts that $\mu$ stays below $0.1$ $1/\mathrm{h}$.
@@ -327,7 +327,7 @@ We now design a second experiment to start discriminating between these plausibl
 using the following criterion:
 ```math
 \begin{equation*}
-\argmax_{\bm u} \frac{2!(10-2)!}{10!}\sum_{i=1}^10 \sum_{j=i+1}^{10} \max_{t_k} (\bm C_s^i(t_k) - h(\bm C_s^j(t_k)))^2.
+\argmax_{\bm Q_{in}} \frac{2!(10-2)!}{10!}\sum_{i=1}^{10} \sum_{j=i+1}^{10} \max_{t_k} (\bm C_s^i(t_k) - \bm C_s^j(t_k))^2.
 \end{equation*}
 ```
 In this equation, $C_s^i$ denotes the predicted substrate concentration for the i'th plausible model structure.
@@ -393,7 +393,7 @@ end
 plot!(plts[2],xlabel="t(h)",ylabel="Cₛ(g/L)")
 plot(plts..., layout = (2, 1), tickfontsize=12, guidefontsize=14, legendfontsize=14, grid=false, legend=false)
 ```
-The above figure shows that a maximal control action is preferred.
+The above figure shows that a maximal control action is generally preferred.
 This causes the two aforementioned groups in the model structures to be easily discriminated from one another.
 
 We now gather a second dataset and perform the same exercise.
@@ -435,8 +435,6 @@ T = defaults(ude_bioreactor2)[ude_bioreactor2.nn.T]
 total_data = hcat(collect(data[!, "C_s(t)"]'), collect(data2[!, "C_s(t)"]'))
 total_predicted_data =  vcat(μ_predicted_data, μ_predicted_data2)
 hall_of_fame = equation_search(total_data, total_predicted_data; options, niterations=1000, runtests=false, parallelism=:serial)
-```
-```@example DoE
 model_structures = get_model_structures(hall_of_fame, options, n_best)
 probs_plausible, syms_cache = get_probs_and_caches(model_structures);
 
@@ -470,14 +468,9 @@ Both the UDE and most of the plausible model structures predict the states well,
 The UDE and the plausible model structures also approximate the missing physics $\mu$ well in the region where we have gathered data.
 This means in the regions of low substrate concentration,
 with data coming primarily from the first experiment,
-and high substrate concentration, coming from the second experiment
+and high substrate concentration, coming from the second experiment.
 However, we do not have any measurements at substrate concentrations between these two groups.
 This causes there to be substantial disagreement between the plausible model structures in the medium substrate concentration range.
-One of the plausible model structures is the Monod equation,
-with reasonably accurate parameter values: $\nicefrac{C_s}{(C_s - (-5.4499))}*0.42887$.
-Symbolic regression sometimes finds the true model structure in a somewhat unusual form,
-like with a double negative sign.
-This is because symbolic regression considers addition and subtraction to have the same complexity, as well as positive and negative numbers.
 
 We now optimize the controls for a third experiment:
 ```@example DoE
@@ -519,7 +512,6 @@ This explains the staircase with increasing step heights form of the control fun
 After the staircase reaches the maximal control value, a zero control is used.
 Some model structures decrease more rapidly in substrate concentration than others.
 
-
 ```@example DoE
 @mtkbuild true_bioreactor3 = TrueBioreactor()
 prob3 = ODEProblem(true_bioreactor3, [], (0.0, 15.0), [], tstops=0:15, save_everystep=false)
@@ -548,9 +540,17 @@ T = defaults(ude_bioreactor3)[ude_bioreactor3.nn.T]
 total_data = hcat(collect(data[!, "C_s(t)"]'), collect(data2[!, "C_s(t)"]'), collect(data3[!, "C_s(t)"]'))
 total_predicted_data =  vcat(μ_predicted_data, μ_predicted_data2, μ_predicted_data3)
 hall_of_fame = equation_search(total_data, total_predicted_data; options, niterations=1000, runtests=false, parallelism=:serial)
+bar(i->hall_of_fame.members[i].loss, 1:10, ylabel="loss", xlabel="hall of fame member", xticks=1:10)
+plot!(tickfontsize=10, guidefontsize=12, legendfontsize=14, grid=false, legend=false)
 ```
-The Monod equation $C_s / ((C_s - -4.631) / 0.42347)$ has a very high score, higher than all other model structures,
-indicating that it is a very good candidate for the true model structure.
+The Monod equation $(0.419 / ((x1 + 4.300) / x1))$ is member 7 of the hall of fame.
+All hall of fame members before it have visually higher loss,
+while all the members after it are indiscernible from it.
+This indicates that it is a good candidate for the true model structure.
+
+Symbolic regression sometimes finds the true model structure in a somewhat unusual form,
+like with a double division.
+This is because symbolic regression considers multiplication and division to have the same complexity.
 
 In this tutorial, we have shown that experimental design can be used to explore the state space of a dynamic system in a thoughtful way,
 such that missing physics can be recovered in an efficient manner.
