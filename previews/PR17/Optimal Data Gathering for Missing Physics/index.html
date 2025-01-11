@@ -21,7 +21,7 @@ using DataFrames</code></pre><p>The bioreactor consists of 3 states: substrate c
 \frac{dC_s}{dt} &amp;= -\left(\frac{\mu(C_s)}{y_{x,s}} + m\right) C_x + \frac{Q_{in}(t)}{V}(C_{S,in} - C_s),\\
 \frac{dC_x}{dt} &amp;= \mu(C_s) C_x - \frac{Q_{in}(t)}{V}C_x,\\
 \frac{dV}{dt} &amp;= Q_{in}(t).
-\end{aligned}\]</p><p>The substrate is eaten by the biomass, causing the biomass to grow. The rate by which the biomass grows <span>$μ(t)$</span> is an unknown function (missing physics), which must be estimated from experimental data. The rate by which the substrate is consumed <span>$σ(t)$</span> is dependent on <span>$μ(t)$</span>, trough a yield factor <span>$y_{x:s}$</span> and a maintenance term <span>$m$</span>, where are assumed to be known parameters. More substrate can be pumped into the reactor  with pumping speed <span>$Q_in(t)$</span>. This pumped substrate has known concentration <span>$C_{s_{in}}$</span>. The goal is to optimize the control action <span>$Q_{in}(t)$</span>, such that <span>$μ(t)$</span> can be estimated as precisely as possible. We restrict <span>$Q_{in}(t)$</span> to piecewise constant functions. This can be implemented in MTK as:</p><pre><code class="language-julia hljs">@mtkmodel Bioreactor begin
+\end{aligned}\]</p><p>The substrate is eaten by the biomass, causing the biomass to grow. The rate by which the biomass grows <span>$μ(t)$</span> is an unknown function (missing physics), which must be estimated from experimental data. The rate by which the substrate is consumed <span>$σ(t)$</span> is dependent on <span>$μ(t)$</span>, trough a yield factor <span>$y_{x:s}$</span> and a maintenance term <span>$m$</span>, where are assumed to be known parameters. More substrate can be pumped into the reactor  with pumping speed <span>$Q_{in}(t)$</span>. This pumped substrate has known concentration <span>$C_{s_{in}}$</span>. The goal is to optimize the control action <span>$Q_{in}(t)$</span>, such that <span>$μ(t)$</span> can be estimated as precisely as possible. We restrict <span>$Q_{in}(t)$</span> to piecewise constant functions. This can be implemented in MTK as:</p><pre><code class="language-julia hljs">@mtkmodel Bioreactor begin
     @constants begin
         C_s_in = 50.0
         y_x_s = 0.777
@@ -161,7 +161,7 @@ plot!(plts[4], C_s_range_plot, μ_max .* C_s_range_plot ./ (K_s .+ C_s_range_plo
 plot!(plts[4], C_s_range_plot, μ_predicted_plot, lw=3, c=2)
 scatter!(plts[4], data[!, &quot;C_s(t)&quot;], μ_predicted_data, ms=3, c=2)
 plot!(plts[4], ylabel=&quot;μ(1/h)&quot;, xlabel=&quot;Cₛ(g/L)&quot;,ylims=(0,0.5))
-plot(plts..., layout = 4, tickfontsize=10, guidefontsize=12, legendfontsize=14, grid=false, legend=false)</code></pre><img src="aead4090.svg" alt="Example block output"/><p>On the above figure we see that the neural network predicts <span>$C_s$</span> well, except during the final hours of the experiment, where we have multiple positive realizations of the noise in a row. The neural network also predicts <span>$µ$</span> well in the low substrate concentration region, where we have available data. However, the fit is poor at higher substrate concentrations, where we do not have data.</p><p>We continue by making the neural network interpretable using symbolic regression.</p><pre><code class="language-julia hljs">options = SymbolicRegression.Options(
+plot(plts..., layout = 4, tickfontsize=10, guidefontsize=12, legendfontsize=14, grid=false, legend=false)</code></pre><img src="aead4090.svg" alt="Example block output"/><p>On the above figure we see that the neural network predicts <span>$C_s$</span> well, except during the final hours of the experiment, where we have multiple positive realizations of the noise in a row. The neural network also predicts <span>$µ$</span> well in the low substrate concentration region, where we have data available. However, the fit is poor at higher substrate concentrations, where we do not have data.</p><p>We continue by making the neural network interpretable using symbolic regression.</p><pre><code class="language-julia hljs">options = SymbolicRegression.Options(
     unary_operators=(exp, sin, cos),
     binary_operators=(+, *, /, -),
     seed=123,
@@ -282,8 +282,8 @@ plot!(plts[4], C_s_range_plot, μ_max .* C_s_range_plot ./ (K_s .+ C_s_range_plo
 plot!(plts[4], C_s_range_plot, μ_predicted_plot, lw=3, c=2)
 scatter!(plts[4], data[!, &quot;C_s(t)&quot;], μ_predicted_data, ms=3, c=2)
 plot!(plts[4], ylabel=&quot;μ(1/h)&quot;, xlabel=&quot;Cₛ(g/L)&quot;,ylims=(0,0.5))
-plot(plts..., layout = 4, tickfontsize=10, guidefontsize=12, legendfontsize=14, grid=false, legend=false)</code></pre><img src="df87a2a2.svg" alt="Example block output"/><p>On the figure we see that most plausible model structures predict the states <span>$C_s$</span> and <span>$C_x$</span> well, similar to the neural network. The plausible model structures also fit <span>$\mu$</span> well in the low <span>$C_s$</span> region, but not outside this region. One group of the structures predicts that <span>$\mu$</span> keeps increasing as <span>$C_s$</span> becomes large while another group predicts that <span>$\mu$</span> stays below <span>$0.1$</span> <span>$1/\mathrm{h}$</span>.</p><p>We now design a second experiment to start discriminating between these plausible model structures, using the following criterion:</p><p class="math-container">\[\begin{equation*}
-\argmax_{\bm u} \frac{2!(10-2)!}{10!}\sum_{i=1}^10 \sum_{j=i+1}^{10} \max_{t_k} (\bm C_s^i(t_k) - h(\bm C_s^j(t_k)))^2.
+plot(plts..., layout = 4, tickfontsize=10, guidefontsize=12, legendfontsize=14, grid=false, legend=false)</code></pre><img src="df87a2a2.svg" alt="Example block output"/><p>On the figure, we see that most plausible model structures predict the states <span>$C_s$</span> and <span>$C_x$</span> well, similar to the neural network. The plausible model structures also fit <span>$\mu$</span> well in the low <span>$C_s$</span> region, but not outside this region. One group of the structures predicts that <span>$\mu$</span> keeps increasing as <span>$C_s$</span> becomes large while another group predicts that <span>$\mu$</span> stays below <span>$0.1$</span> <span>$1/\mathrm{h}$</span>.</p><p>We now design a second experiment to start discriminating between these plausible model structures, using the following criterion:</p><p class="math-container">\[\begin{equation*}
+\argmax_{\bm Q_{in}} \frac{2!(10-2)!}{10!}\sum_{i=1}^{10} \sum_{j=i+1}^{10} \max_{t_k} (\bm C_s^i(t_k) - \bm C_s^j(t_k))^2.
 \end{equation*}\]</p><p>In this equation, <span>$C_s^i$</span> denotes the predicted substrate concentration for the i&#39;th plausible model structure. The distance between two model structures is scored by the maximal squared difference between the two structures at the measurement times. The criterion then calculates the average distance between all model structures. Collecting measurements where the plausible model structures differ greatly in predictions, will cause at least some of the model structures to become unlikely, and thus cause new model structures to enter the top 10 plausible model structures.</p><pre><code class="language-julia hljs">function S_criterion(optimization_state, (probs_plausible, syms_cache))
     n_structures = length(probs_plausible)
     sols = Array{Any}(undef, n_structures)
@@ -338,7 +338,7 @@ for i in 1:length(model_structures)
     plot!(plts[2], sol_plausible, idxs=:C_s, lw=3,ls=:dash,c=i+2)
 end
 plot!(plts[2],xlabel=&quot;t(h)&quot;,ylabel=&quot;Cₛ(g/L)&quot;)
-plot(plts..., layout = (2, 1), tickfontsize=12, guidefontsize=14, legendfontsize=14, grid=false, legend=false)</code></pre><img src="d7233b8d.svg" alt="Example block output"/><p>The above figure shows that a maximal control action is preferred. This causes the two aforementioned groups in the model structures to be easily discriminated from one another.</p><p>We now gather a second dataset and perform the same exercise.</p><pre><code class="language-julia hljs">@mtkbuild true_bioreactor2 = TrueBioreactor()
+plot(plts..., layout = (2, 1), tickfontsize=12, guidefontsize=14, legendfontsize=14, grid=false, legend=false)</code></pre><img src="d7233b8d.svg" alt="Example block output"/><p>The above figure shows that a maximal control action is generally preferred. This causes the two aforementioned groups in the model structures to be easily discriminated from one another.</p><p>We now gather a second dataset and perform the same exercise.</p><pre><code class="language-julia hljs">@mtkbuild true_bioreactor2 = TrueBioreactor()
 prob2 = ODEProblem(true_bioreactor2, [], (0.0, 15.0), [], tstops=0:15, save_everystep=false)
 sol2 = solve(prob2, Rodas5P())
 @mtkbuild ude_bioreactor2 = UDEBioreactor()
@@ -374,48 +374,8 @@ T = defaults(ude_bioreactor2)[ude_bioreactor2.nn.T]
 
 total_data = hcat(collect(data[!, &quot;C_s(t)&quot;]&#39;), collect(data2[!, &quot;C_s(t)&quot;]&#39;))
 total_predicted_data =  vcat(μ_predicted_data, μ_predicted_data2)
-hall_of_fame = equation_search(total_data, total_predicted_data; options, niterations=1000, runtests=false, parallelism=:serial)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">HallOfFame{...}:
-    .exists[1] = true
-    .members[1] = PopMember(tree = (0.19701993669993115), loss = 0.02831501263997261, score = 0.42498198576025786)
-    .exists[2] = true
-    .members[2] = PopMember(tree = (sin(0.1983553338152563)), loss = 0.02831501402707069, score = 0.4281820063417084)
-    .exists[3] = true
-    .members[3] = PopMember(tree = (x1 * 0.00945883679424181), loss = 0.0016298777176305234, score = 0.033878747663012306)
-    .exists[4] = true
-    .members[4] = PopMember(tree = (sin(x1 * 0.009726003671070012)), loss = 0.001550765028945566, score = 0.035900280852511485)
-    .exists[5] = true
-    .members[5] = PopMember(tree = ((x1 * 0.008457289486938786) - -0.039324422715901426), loss = 0.0008178493940826866, score = 0.028182728459940423)
-    .exists[6] = true
-    .members[6] = PopMember(tree = (exp(-1.745262750054028 / x1) * 0.39317758853597), loss = 0.0003618695659276008, score = 0.024590428009133736)
-    .exists[7] = true
-    .members[7] = PopMember(tree = (exp(-4.3465564407772055 / exp(x1)) * 0.37556587954345827), loss = 0.00017401342657918185, score = 0.02499211277577548)
-    .exists[8] = true
-    .members[8] = PopMember(tree = ((exp(-2.8060823119335945 / x1) * 0.3682889239598755) + 0.03356502069587083), loss = 7.012594659332907e-6, score = 0.025704459349084788)
-    .exists[9] = true
-    .members[9] = PopMember(tree = ((exp(-7.458617072285153 / exp(x1)) * 0.34361451680689514) + 0.03243739878625501), loss = 1.83698095951205e-7, score = 0.028802735882223627)
-    .exists[10] = true
-    .members[10] = PopMember(tree = ((exp((x1 * -0.06605921530630715) * x1) * -0.3444675911343022) + 0.3760539765634865), loss = 1.1571158462944339e-7, score = 0.032001721440757865)
-    .exists[11] = true
-    .members[11] = PopMember(tree = ((exp((-6.375448296374913 - x1) / exp(x1)) * 0.34474542498291066) + 0.03130791485131507), loss = 1.9760432423964754e-8, score = 0.035200294161753506)
-    .exists[12] = true
-    .members[12] = PopMember(tree = (sin((exp((exp(x1) - x1) * -0.08906758197477413) * -0.3863259314664916) + 0.3855338592625565)), loss = 1.0217196600548644e-8, score = 0.038400150294534426)
-    .exists[13] = true
-    .members[13] = PopMember(tree = (sin((exp((exp(x1) - x1) * sin(-0.08906758197477413)) * -0.3863259314664916) + 0.3855338592625565)), loss = 1.157359229306547e-8, score = 0.04160017251411626)
-    .exists[14] = true
-    .members[14] = PopMember(tree = (sin((exp((exp(x1 * 1.8807720853579226) - x1) * -0.01443990957722531) * -0.3591851756648414) + 0.38552860351419455)), loss = 6.56954828735958e-9, score = 0.04480009626294819)
-    .exists[15] = true
-    .members[15] = PopMember(tree = (sin((exp((exp(x1 * 1.8807720853579226) - x1) * sin(-0.01443990957722531)) * -0.3591851756648414) + 0.38552860351419455)), loss = 6.570736079824285e-9, score = 0.048000098295278605)
-    .exists[16] = true
-    .members[16] = PopMember(tree = (sin((exp((exp(x1 * 1.8807720853579226) - (x1 / 0.9994907134444889)) * -0.01443990957722531) * -0.3591851756648414) + 0.38552860351419455)), loss = 6.579473243938862e-9, score = 0.05120009671477457)
-    .exists[17] = true
-    .members[17] = PopMember(tree = (sin(cos(exp(((exp(x1 * 1.380909768597154) - 0.20813749662248507) * x1) * -0.009332646406887983) * 0.8686284322386512) + -0.6144661401359365)), loss = 6.273320827438731e-9, score = 0.05440009044365803)
-    .exists[18] = true
-    .members[18] = PopMember(tree = (sin(cos(exp(((exp(x1 * 1.380909768597154) - 0.20813749662248507) * x1) * sin(-0.009332646406887983)) * 0.8686284322386512) + -0.6144661401359365)), loss = 6.273333707613395e-9, score = 0.05760009245848689)
-    .exists[19] = true
-    .members[19] = PopMember(tree = (sin(cos(exp((((exp(x1 * 1.3809096359880475) + 0.6314308765832464) - 0.8473605180347423) * x1) * -0.009349142826465626) * 0.8686153403671144) + -0.6144661392398105)), loss = 6.304037636265136e-9, score = 0.060800091205200996)
-    .exists[20] = true
-    .members[20] = PopMember(tree = (sin(cos(exp((x1 * (exp(x1 * 1.380909768597154) - (0.20813749662248507 * cos(0.1312540833324842)))) * -0.009332646406887983) * 0.8686284322386512) + -0.6144661401359365)), loss = 6.28792045877475e-9, score = 0.06400008925446533)
-</code></pre><pre><code class="language-julia hljs">model_structures = get_model_structures(hall_of_fame, options, n_best)
+hall_of_fame = equation_search(total_data, total_predicted_data; options, niterations=1000, runtests=false, parallelism=:serial)
+model_structures = get_model_structures(hall_of_fame, options, n_best)
 probs_plausible, syms_cache = get_probs_and_caches(model_structures);
 
 plts = plot(), plot(), plot(), plot()
@@ -440,7 +400,7 @@ plot!(plts[4], C_s_range_plot, μ_predicted_plot2, lw=3, c=2)
 scatter!(plts[4], data[!, &quot;C_s(t)&quot;], μ_predicted_data, ms=3, c=2)
 scatter!(plts[4], data2[!, &quot;C_s(t)&quot;], μ_predicted_data2, ms=3, c=2)
 plot!(plts[4], ylabel=&quot;μ(1/h)&quot;, xlabel=&quot;Cₛ(g/L)&quot;,ylims=(0,0.5))
-plot(plts..., layout = 4, tickfontsize=10, guidefontsize=12, legendfontsize=14, grid=false, legend=false)</code></pre><img src="14534cd3.svg" alt="Example block output"/><p>The above shows the data analysis corresponding to this second experiment. Both the UDE and most of the plausible model structures predict the states well,</p><p>The UDE and the plausible model structures also approximate the missing physics <span>$\mu$</span> well in the region where we have gathered data. This means in the regions of low substrate concentration, with data coming primarily from the first experiment, and high substrate concentration, coming from the second experiment However, we do not have any measurements at substrate concentrations between these two groups. This causes there to be substantial disagreement between the plausible model structures in the medium substrate concentration range. One of the plausible model structures is the Monod equation, with reasonably accurate parameter values: <span>$\nicefrac{C_s}{(C_s - (-5.4499))}*0.42887$</span>. Symbolic regression sometimes finds the true model structure in a somewhat unusual form, like with a double negative sign. This is because symbolic regression considers addition and subtraction to have the same complexity, as well as positive and negative numbers.</p><p>We now optimize the controls for a third experiment:</p><pre><code class="language-julia hljs">prob = OptimizationProblem(S_criterion, zeros(15), (probs_plausible, syms_cache), lb=lb, ub=ub)
+plot(plts..., layout = 4, tickfontsize=10, guidefontsize=12, legendfontsize=14, grid=false, legend=false)</code></pre><img src="36c9967b.svg" alt="Example block output"/><p>The above shows the data analysis corresponding to this second experiment. Both the UDE and most of the plausible model structures predict the states well,</p><p>The UDE and the plausible model structures also approximate the missing physics <span>$\mu$</span> well in the region where we have gathered data. This means in the regions of low substrate concentration, with data coming primarily from the first experiment, and high substrate concentration, coming from the second experiment. However, we do not have any measurements at substrate concentrations between these two groups. This causes there to be substantial disagreement between the plausible model structures in the medium substrate concentration range.</p><p>We now optimize the controls for a third experiment:</p><pre><code class="language-julia hljs">prob = OptimizationProblem(S_criterion, zeros(15), (probs_plausible, syms_cache), lb=lb, ub=ub)
 control_pars_opt = solve(prob, BBO_adaptive_de_rand_1_bin_radiuslimited(), maxtime=60.0)
 
 optimization_state = control_pars_opt.u
@@ -465,7 +425,7 @@ for i in 1:length(model_structures)
     plot!(plts[2], sol_plausible, idxs=:C_s, lw=3,ls=:dash,c=i+2)
 end
 plot!(plts[2],xlabel=&quot;t(h)&quot;,ylabel=&quot;Cₛ(g/L)&quot;)
-plot(plts..., layout = (2, 1), tickfontsize=12, guidefontsize=14, legendfontsize=14, grid=false, legend=false)</code></pre><img src="964ef03a.svg" alt="Example block output"/><p>The optimal design algorithm is also aware of this uncertainty at the medium concentration range, and aims to remedy this in the next experiment, as can be seen on the above figure. Using the first control action, the bioreactor substrate concentration gets pumped from a low substrate concentration level to a medium level. At this level, there is substantial disagreement between the plausible model structures, leading to substantial disagreement in predicted substrate concentrations. To keep the reactor at the medium substrate concentration range, while the biomass concentration increases rapidly, an increasing amount of substrate has to be pumped into the reactor every hour. This explains the staircase with increasing step heights form of the control function. After the staircase reaches the maximal control value, a zero control is used. Some model structures decrease more rapidly in substrate concentration than others.</p><pre><code class="language-julia hljs">@mtkbuild true_bioreactor3 = TrueBioreactor()
+plot(plts..., layout = (2, 1), tickfontsize=12, guidefontsize=14, legendfontsize=14, grid=false, legend=false)</code></pre><img src="ec180b7e.svg" alt="Example block output"/><p>The optimal design algorithm is also aware of this uncertainty at the medium concentration range, and aims to remedy this in the next experiment, as can be seen on the above figure. Using the first control action, the bioreactor substrate concentration gets pumped from a low substrate concentration level to a medium level. At this level, there is substantial disagreement between the plausible model structures, leading to substantial disagreement in predicted substrate concentrations. To keep the reactor at the medium substrate concentration range, while the biomass concentration increases rapidly, an increasing amount of substrate has to be pumped into the reactor every hour. This explains the staircase with increasing step heights form of the control function. After the staircase reaches the maximal control value, a zero control is used. Some model structures decrease more rapidly in substrate concentration than others.</p><pre><code class="language-julia hljs">@mtkbuild true_bioreactor3 = TrueBioreactor()
 prob3 = ODEProblem(true_bioreactor3, [], (0.0, 15.0), [], tstops=0:15, save_everystep=false)
 sol3 = solve(prob3, Rodas5P())
 @mtkbuild ude_bioreactor3 = UDEBioreactor()
@@ -491,45 +451,6 @@ T = defaults(ude_bioreactor3)[ude_bioreactor3.nn.T]
 
 total_data = hcat(collect(data[!, &quot;C_s(t)&quot;]&#39;), collect(data2[!, &quot;C_s(t)&quot;]&#39;), collect(data3[!, &quot;C_s(t)&quot;]&#39;))
 total_predicted_data =  vcat(μ_predicted_data, μ_predicted_data2, μ_predicted_data3)
-hall_of_fame = equation_search(total_data, total_predicted_data; options, niterations=1000, runtests=false, parallelism=:serial)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">HallOfFame{...}:
-    .exists[1] = true
-    .members[1] = PopMember(tree = (0.23502604132686242), loss = 0.023221892090815478, score = 0.29917436825566945)
-    .exists[2] = true
-    .members[2] = PopMember(tree = (sin(0.23724535979926353)), loss = 0.023221892090815488, score = 0.30237436817483077)
-    .exists[3] = true
-    .members[3] = PopMember(tree = (x1 * 0.01092207976995186), loss = 0.009608645599147704, score = 0.13206688554131443)
-    .exists[4] = true
-    .members[4] = PopMember(tree = (sin(x1 * 0.011404465203225647)), loss = 0.00909690472289598, score = 0.1287444980253143)
-    .exists[5] = true
-    .members[5] = PopMember(tree = ((x1 * 0.008076938706035684) - -0.09414310760879542), loss = 0.00541773271537424, score = 0.08505165119067447)
-    .exists[6] = true
-    .members[6] = PopMember(tree = (0.37687491465465117 / exp(1.4708561272857203 / x1)), loss = 0.00029176130341624723, score = 0.022918639509176712)
-    .exists[7] = true
-    .members[7] = PopMember(tree = (0.41929017605653085 / ((x1 + 4.2991674778342555) / x1)), loss = 2.2921602116265202e-5, score = 0.02269214622709096)
-    .exists[8] = true
-    .members[8] = PopMember(tree = (0.4192824957430995 / ((x1 + exp(1.4554865463803706)) / x1)), loss = 2.2944075385181447e-5, score = 0.025892432811882762)
-    .exists[9] = true
-    .members[9] = PopMember(tree = ((0.42093063536374703 / ((x1 + 4.030819433232904) / x1)) - 0.004663893292891589), loss = 2.0069316309167732e-5, score = 0.02905579275392465)
-    .exists[10] = true
-    .members[10] = PopMember(tree = ((0.42093063536374703 / ((x1 + 4.030819433232904) / x1)) - sin(0.004663893292891589)), loss = 2.0069316310464214e-5, score = 0.032255791043287865)
-    .exists[11] = true
-    .members[11] = PopMember(tree = ((exp(-3.2829855789751567 / (x1 + sin(x1))) * 0.3886676710042523) - -0.019247335269764066), loss = 1.9818239120086744e-5, score = 0.03545259295637693)
-    .exists[12] = true
-    .members[12] = PopMember(tree = (sin(exp(0.8944699655196666 / (6.8264817808512746 - (cos(x1) - x1))) * 2.69970803210875)), loss = 8.190090169478688e-6, score = 0.03850438480211776)
-    .exists[13] = true
-    .members[13] = PopMember(tree = (sin(exp(0.792785101267852 / (x1 + (cos(cos(x1)) + 4.668500655077354))) * 2.70463492600443)), loss = 6.00295654491826e-6, score = 0.04167651072937715)
-    .exists[14] = true
-    .members[14] = PopMember(tree = (sin(exp(0.779548173246725 / (x1 + (cos(sin(exp(x1))) + 4.5923350395550635))) * 2.7055797272195683)), loss = 1.620999378881824e-6, score = 0.0448206588322178)
-    .exists[15] = true
-    .members[15] = PopMember(tree = (sin(exp(sin(0.7758801374549321 / ((cos(sin(exp(x1))) + x1) + 4.551194245416134))) * 2.705815625055117)), loss = 1.6212362281866473e-6, score = 0.04802066386561498)
-    .exists[16] = true
-    .members[16] = PopMember(tree = (sin(exp(0.7794496946880752 / (x1 + ((cos(sin(exp(x1))) / 1.0071323641456111) + 4.592351990785665))) * 2.705601835182065)), loss = 1.6283288138617742e-6, score = 0.05122075255343381)
-    .exists[17] = true
-    .members[17] = PopMember(tree = (sin(exp(0.7723653214975493 / ((cos(sin(sin(exp(x1))) * -1.1433053124723715) + 4.544895890806148) + x1)) * 2.706194463011244)), loss = 1.3611872206627563e-6, score = 0.05441734599256441)
-    .exists[18] = true
-    .members[18] = PopMember(tree = (sin(exp(0.7723653214975493 / (x1 + (cos(sin(exp(x1)) * cos(sin(0.14829220705706533))) + 4.544189119125487))) * 2.706194463011244)), loss = 1.577463012454449e-6, score = 0.05762010454790927)
-    .exists[19] = true
-    .members[19] = PopMember(tree = (sin(exp(0.7723653214975493 / (x1 + (cos(sin(sin(exp(0.01573524202166123 + x1))) * -1.1433053124723715) + 4.544895890806148))) * 2.706194463011244)), loss = 1.1224673455477329e-6, score = 0.06081430369502493)
-    .exists[20] = true
-    .members[20] = PopMember(tree = (sin(exp(0.7723653214975493 / (x1 + (cos(sin(sin(exp(sin(0.023676419017362536) + x1))) * -1.1433053124723715) + 4.544895890806148))) * 2.706194463011244)), loss = 1.127929026992144e-6, score = 0.06401437159617196)
-</code></pre><p>The Monod equation <span>$C_s / ((C_s - -4.631) / 0.42347)$</span> has a very high score, higher than all other model structures, indicating that it is a very good candidate for the true model structure.</p><p>In this tutorial, we have shown that experimental design can be used to explore the state space of a dynamic system in a thoughtful way, such that missing physics can be recovered in an efficient manner.</p></article><nav class="docs-footer"><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.8.0 on <span class="colophon-date" title="Friday 10 January 2025 01:49">Friday 10 January 2025</span>. Using Julia version 1.11.2.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+hall_of_fame = equation_search(total_data, total_predicted_data; options, niterations=1000, runtests=false, parallelism=:serial)
+bar(i-&gt;hall_of_fame.members[i].loss, 1:10, ylabel=&quot;loss&quot;, xlabel=&quot;hall of fame member&quot;, xticks=1:10)
+plot!(tickfontsize=10, guidefontsize=12, legendfontsize=14, grid=false, legend=false)</code></pre><img src="a7c3ca3a.svg" alt="Example block output"/><p>The Monod equation <span>$(0.419 / ((x1 + 4.300) / x1))$</span> is member 7 of the hall of fame. All hall of fame members before it have visually higher loss, while all the members after it are indiscernible from it. This indicates that it is a good candidate for the true model structure.</p><p>Symbolic regression sometimes finds the true model structure in a somewhat unusual form, like with a double division. This is because symbolic regression considers multiplication and division to have the same complexity.</p><p>In this tutorial, we have shown that experimental design can be used to explore the state space of a dynamic system in a thoughtful way, such that missing physics can be recovered in an efficient manner.</p></article><nav class="docs-footer"><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.8.0 on <span class="colophon-date" title="Saturday 11 January 2025 01:32">Saturday 11 January 2025</span>. Using Julia version 1.11.2.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
