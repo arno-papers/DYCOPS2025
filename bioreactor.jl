@@ -232,12 +232,15 @@ total_data = hcat(collect(data[!, "C_s(t)"]'), collect(data2[!, "C_s(t)"]'), col
 total_predicted_data =  vcat(μ_predicted_data, μ_predicted_data2, μ_predicted_data3)
 hall_of_fame = equation_search(total_data, total_predicted_data; options, niterations=1000, runtests=false, parallelism=:serial)
 
+bar(i->hall_of_fame.members[i].loss, 1:10, ylabel="loss", xlabel="hall of fame member", xticks=1:10)
+plot!(tickfontsize=10, guidefontsize=12, legendfontsize=14, grid=false, legend=false)
+
+
 scatter(total_data', total_predicted_data,legend=false)
 
 model_structures = get_model_structures(hall_of_fame, options, n_best)
 probs_plausible, syms_cache = get_probs_and_caches(model_structures);
 
-plot()
 μ_predicted_plot3 = [only(stateless_apply(extracted_chain, [C_s], convert(T,res.u))) for C_s in C_s_range_plot]
 for i in 1:length(model_structures)
     plot!(C_s_range_plot, model_structures[i].( C_s_range_plot);c=i+2,lw=1,ls=:dash)
@@ -247,3 +250,24 @@ scatter!(data[!, "C_s(t)"], μ_predicted_data, ms=3, c=2)
 scatter!(data2[!, "C_s(t)"], μ_predicted_data2, ms=3, c=2)
 scatter!(data3[!, "C_s(t)"], μ_predicted_data3, ms=3, c=2)
 plot!(ylabel="μ(1/h)", xlabel="Cₛ(g/L)",ylims=(0,0.5),legend=false)
+
+plts = plot(), plot()
+for i in 1:10
+    plot!(plts[2],  C_s_range_plot, model_structures[i].( C_s_range_plot);c=i+2,lw=1,ls=:dash)
+    plausible_prob = probs_plausible[i]
+    sol_plausible = solve(plausible_prob, Rodas5P())
+    # plot!(sol_plausible; label=["Cₛ(g/L)" "Cₓ(g/L)" "V(L)"], xlabel="t(h)", lw=3)
+    plot!(plts[1], sol_plausible, idxs=:C_s, lw=1,ls=:dash,c=i+2)
+end
+plot!(plts[1], sol3, idxs=:C_s, lw=3,c=1)
+plot!(plts[1], res_sol, idxs=:C_s, lw=3,c=2)
+plot!(plts[1], ylabel="Cₛ(g/L)", xlabel="t(h)")
+scatter!(plts[1], data3[!, "timestamp"], data3[!, "C_s(t)"]; ms=3,c=1)
+plot!(plts[2], C_s_range_plot, μ_max .* C_s_range_plot ./ (K_s .+ C_s_range_plot), lw=3, c=1)
+plot!(plts[2], C_s_range_plot, μ_predicted_plot3, lw=3, c=2)
+scatter!(plts[2], data[!, "C_s(t)"], μ_predicted_data, ms=3, c=2)
+scatter!(plts[2], data2[!, "C_s(t)"], μ_predicted_data2, ms=3, c=2)
+scatter!(plts[2], data3[!, "C_s(t)"], μ_predicted_data3, ms=3, c=2)
+plot!(plts[2], ylabel="μ(1/h)", xlabel="Cₛ(g/L)",ylims=(0,0.5))
+plot(plts..., layout = (2, 1), tickfontsize=10, guidefontsize=12, legendfontsize=14, grid=false, legend=false)
+savefig("experiment3.pdf")
